@@ -56,3 +56,30 @@ func (c *Client) DeleteUser(userNames ...string) error {
 		return fmt.Errorf("Unknown error. statusCode=%d", resp.StatusCode())
 	}
 }
+
+// ChangeUserPassword changes the password of the specified user.
+func (c *Client) ChangeUserPassword(userName string, oldPassword string, newPassword string) error {
+	resp, err := c.client.R().
+		SetHeader("Content-Type", "application/json").
+		SetBody(map[string]interface{}{
+			"userName":    userName,
+			"oldPassword": oldPassword,
+			"newPassword": newPassword,
+		}).
+		Put("api/userroledao/user")
+	switch resp.StatusCode() {
+	case 200:
+		return nil
+	case 400:
+		return errors.New("Provided data has invalid format")
+	case 403:
+		return errors.New("Provided user name or password is incorrect")
+	case 412:
+		return errors.New("An error occurred in the platform")
+	default:
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("Unknown error. statusCode=%d", resp.StatusCode())
+	}
+}
