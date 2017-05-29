@@ -1,14 +1,16 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
 
+	"github.com/pkg/errors"
+
 	"github.com/spf13/cobra"
+	"gopkg.in/cheggaaa/pb.v1"
 )
 
-var userrolelistCmd = &cobra.Command{
-	Use:   "userrolelist",
+var userroleCmd = &cobra.Command{
+	Use:   "userrole",
 	Short: "User management command",
 	Long:  `Manage the users of Pentaho.`,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -16,7 +18,7 @@ var userrolelistCmd = &cobra.Command{
 	},
 }
 
-var userrolelistChangeUserPasswordCmd = &cobra.Command{
+var userroleChangeUserPasswordCmd = &cobra.Command{
 	Use:   "change-user-password",
 	Short: "Change the user password.",
 	PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -30,21 +32,49 @@ var userrolelistChangeUserPasswordCmd = &cobra.Command{
 	},
 }
 
-var userrolelistCreateUserCmd = &cobra.Command{
+var file string
+
+var userroleCreateUserCmd = &cobra.Command{
 	Use:   "create-user",
 	Short: "Create user",
 	PreRunE: func(cmd *cobra.Command, args []string) error {
-		if len(args) != 2 {
+		if file != "" {
+			if len(args) > 0 {
+				return errors.New("can not set both option(file) and arguments")
+			}
+		} else if len(args) != 2 {
 			return errors.New("Specify 2 arguments(username and password)")
 		}
 		return nil
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return Client.CreateUser(args[0], args[1])
+		if file == "" {
+			return Client.CreateUser(args[0], args[1])
+		}
+
+		// Create user from CSV file.
+		bar := pb.StartNew(0)
+		bar.Prefix("Scanning CSV file...")
+		users, err := ReadUsersFile(file)
+		if err != nil {
+			return errors.Wrap(err, "failed to read csv file.")
+		}
+		bar.Total = int64(len(users))
+		bar.Start()
+		for _, u := range users {
+			bar.Prefix("Create user: " + u.name)
+			err = Client.CreateUser(u.name, u.password)
+			if err != nil {
+				bar.FinishPrint("Failed to create user: " + u.name)
+				return err
+			}
+		}
+		bar.FinishPrint("Finished to create the users.")
+		return nil
 	},
 }
 
-var userrolelistDeleteUserCmd = &cobra.Command{
+var userroleDeleteUserCmd = &cobra.Command{
 	Use:   "delete-user",
 	Short: "Delete the specified users",
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -54,7 +84,7 @@ var userrolelistDeleteUserCmd = &cobra.Command{
 
 var roleTarget string
 
-var userrolelistrolesCmd = &cobra.Command{
+var userrolerolesCmd = &cobra.Command{
 	Use:   "roles",
 	Short: "Print the list of roles.",
 	PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -99,7 +129,7 @@ var userrolelistrolesCmd = &cobra.Command{
 
 var userTarget string
 
-var userrolelistUsersCmd = &cobra.Command{
+var userroleUsersCmd = &cobra.Command{
 	Use:   "users",
 	Short: "Print the list of users.",
 	PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -137,17 +167,19 @@ var userrolelistUsersCmd = &cobra.Command{
 }
 
 func init() {
-	RootCmd.AddCommand(userrolelistCmd)
+	RootCmd.AddCommand(userroleCmd)
 
-	userrolelistCmd.AddCommand(userrolelistChangeUserPasswordCmd)
+	userroleCmd.AddCommand(userroleChangeUserPasswordCmd)
 
-	userrolelistCmd.AddCommand(userrolelistCreateUserCmd)
+	userroleCreateUserCmd.PersistentFlags().StringVarP(&file, "file", "f", "", "Batch create from CSV file.")
+	userroleCmd.AddCommand(userroleCreateUserCmd)
 
-	userrolelistCmd.AddCommand(userrolelistDeleteUserCmd)
+	userroleDeleteUserCmd.Flags().StringVarP(&file, "file", "f", "", "Batch delete from CSV file.")
+	userroleCmd.AddCommand(userroleDeleteUserCmd)
 
-	userrolelistrolesCmd.PersistentFlags().StringVarP(&roleTarget, "target", "t", "all", "Target roles.[all/standard/permission/system/extra]")
-	userrolelistCmd.AddCommand(userrolelistrolesCmd)
+	userrolerolesCmd.PersistentFlags().StringVarP(&roleTarget, "target", "t", "all", "Target roles.[all/standard/permission/system/extra]")
+	userroleCmd.AddCommand(userrolerolesCmd)
 
-	userrolelistUsersCmd.PersistentFlags().StringVarP(&userTarget, "target", "t", "all", "Target roles.[all/permission]")
-	userrolelistCmd.AddCommand(userrolelistUsersCmd)
+	userroleUsersCmd.PersistentFlags().StringVarP(&userTarget, "target", "t", "all", "Target roles.[all/permission]")
+	userroleCmd.AddCommand(userroleUsersCmd)
 }

@@ -18,6 +18,7 @@ type roles struct {
 
 // ListUsers function lists all users.
 func (c *Client) ListUsers() (*[]string, error) {
+	logger.Info("ListUser")
 	var t userList
 	_, err := c.client.R().
 		SetResult(&t).

@@ -3,8 +3,18 @@ package pentahoclient
 import (
 	"fmt"
 
+	"go.uber.org/zap"
+
 	resty "gopkg.in/resty.v0"
 )
+
+var logger *zap.Logger
+
+func init() {
+	config := zap.NewProductionConfig()
+	config.OutputPaths = []string{"./pentahotools.log"}
+	logger, _ = config.Build()
+}
 
 // Client is the client class for pentaho.
 type Client struct {
