@@ -83,3 +83,45 @@ func (c *Client) ChangeUserPassword(userName string, oldPassword string, newPass
 		return fmt.Errorf("Unknown error. statusCode=%d", resp.StatusCode())
 	}
 }
+
+// AssignRoleToUser assigns a user to the specified roles.
+func (c *Client) AssignRoleToUser(userName string, roles ...string) error {
+	resp, err := c.client.R().
+		SetQueryParam("userName", userName).
+		SetQueryParam("roleNames", strings.Join(roles, "\t")).
+		Put("api/userroledao/assignRoleToUser")
+	switch resp.StatusCode() {
+	case 200:
+		return nil
+	case 403:
+		return errors.New("Only users with administrative privileges can access this method")
+	case 500:
+		return errors.New("Internal server error prevented the system from properly retrieving either the user or roles")
+	default:
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("Unknown error. statusCode=%d", resp.StatusCode())
+	}
+}
+
+// RemoveRoleFromUser removes a user from the specified roles.
+func (c *Client) RemoveRoleFromUser(userName string, roles ...string) error {
+	resp, err := c.client.R().
+		SetQueryParam("userName", userName).
+		SetQueryParam("roleNames", strings.Join(roles, "\t")).
+		Put("api/userroledao/removeRoleFromUser")
+	switch resp.StatusCode() {
+	case 200:
+		return nil
+	case 403:
+		return errors.New("Only users with administrative privileges can access this method")
+	case 500:
+		return errors.New("Internal server error prevented the system from properly retrieving either the user or roles")
+	default:
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("Unknown error. statusCode=%d", resp.StatusCode())
+	}
+}

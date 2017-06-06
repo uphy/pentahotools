@@ -5,6 +5,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	mapset "github.com/deckarep/golang-set"
 	"github.com/spf13/cobra"
 	"gopkg.in/cheggaaa/pb.v1"
 )
@@ -51,17 +52,31 @@ var userroleCreateUserCmd = &cobra.Command{
 		if file == "" {
 			return Client.CreateUser(args[0], args[1])
 		}
-
-		// Create user from CSV file.
+		// Create users with CSV file.
 		bar := pb.StartNew(0)
+		bar.Prefix("Listing existing users...")
+		existingUsers, err := listExistingUsers()
+		if err != nil {
+			bar.FinishPrint("Failed to list existing users.")
+			return errors.Wrap(err, "Failed to list existing users.")
+		}
+
 		bar.Prefix("Scanning CSV file...")
 		users, err := ReadUsersFile(file)
 		if err != nil {
 			return errors.Wrap(err, "failed to read csv file.")
 		}
+
 		bar.Total = int64(len(users))
 		bar.Start()
+		skipped := mapset.NewSet()
 		for _, u := range users {
+			if existingUsers.Contains(u.name) {
+				bar.Prefix("Already exist: " + u.name)
+				bar.Increment()
+				skipped.Add(u.name)
+				continue
+			}
 			bar.Prefix("Create user: " + u.name)
 			err = Client.CreateUser(u.name, u.password)
 			if err != nil {
@@ -70,15 +85,68 @@ var userroleCreateUserCmd = &cobra.Command{
 			}
 		}
 		bar.FinishPrint("Finished to create the users.")
+		if skipped.Cardinality() > 0 {
+			fmt.Printf("Skipped: %s\n", skipped.ToSlice())
+		}
 		return nil
 	},
+}
+
+func listExistingUsers() (mapset.Set, error) {
+	existingUsers := mapset.NewSet()
+	users, err := Client.ListUsers()
+	if err != nil {
+		return nil, err
+	}
+	for _, u := range *users {
+		existingUsers.Add(u)
+	}
+	return existingUsers, nil
 }
 
 var userroleDeleteUserCmd = &cobra.Command{
 	Use:   "delete-user",
 	Short: "Delete the specified users",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return Client.DeleteUser(args...)
+		if file == "" {
+			return Client.DeleteUser(args...)
+		}
+
+		bar := pb.StartNew(0)
+		bar.Prefix("Listing existing users...")
+		existingUsers, err := listExistingUsers()
+		if err != nil {
+			bar.FinishPrint("Failed to list existing users.")
+			return errors.Wrap(err, "Failed to list existing users.")
+		}
+
+		bar.Prefix("Scanning CSV file...")
+		users, err := ReadUsersFile(file)
+		if err != nil {
+			return errors.Wrap(err, "failed to read csv file.")
+		}
+		bar.Total = int64(len(users))
+		bar.Start()
+		skipped := mapset.NewSet()
+		for _, u := range users {
+			if !existingUsers.Contains(u.name) {
+				bar.Prefix("Not exist: " + u.name)
+				bar.Increment()
+				skipped.Add(u.name)
+				continue
+			}
+			bar.Prefix("Delete user: " + u.name)
+			err = Client.DeleteUser(u.name, u.password)
+			if err != nil {
+				bar.FinishPrint("Failed to delete user: " + u.name)
+				return err
+			}
+		}
+		bar.FinishPrint("Finished to delete the users.")
+		if skipped.Cardinality() > 0 {
+			fmt.Printf("Skipped: %s\n", skipped.ToSlice())
+		}
+		return nil
 	},
 }
 
@@ -166,6 +234,38 @@ var userroleUsersCmd = &cobra.Command{
 	},
 }
 
+var userroleAssignRoleToUserCmd = &cobra.Command{
+	Use:   "assign-role-to-user",
+	Short: "Assigns the roles to a user.",
+	PreRunE: func(cmd *cobra.Command, args []string) error {
+		if len(args) < 2 {
+			return errors.New("specify username and roles")
+		}
+		return nil
+	},
+	RunE: func(cmd *cobra.Command, args []string) error {
+		userName := args[0]
+		roles := args[1:]
+		return Client.AssignRoleToUser(userName, roles...)
+	},
+}
+
+var userroleRemoveRoleFromUserCmd = &cobra.Command{
+	Use:   "remove-role-from-user",
+	Short: "Removes the roles from a user.",
+	PreRunE: func(cmd *cobra.Command, args []string) error {
+		if len(args) < 2 {
+			return errors.New("specify username and roles")
+		}
+		return nil
+	},
+	RunE: func(cmd *cobra.Command, args []string) error {
+		userName := args[0]
+		roles := args[1:]
+		return Client.RemoveRoleFromUser(userName, roles...)
+	},
+}
+
 func init() {
 	RootCmd.AddCommand(userroleCmd)
 
@@ -182,4 +282,8 @@ func init() {
 
 	userroleUsersCmd.PersistentFlags().StringVarP(&userTarget, "target", "t", "all", "Target roles.[all/permission]")
 	userroleCmd.AddCommand(userroleUsersCmd)
+
+	userroleCmd.AddCommand(userroleAssignRoleToUserCmd)
+
+	userroleCmd.AddCommand(userroleRemoveRoleFromUserCmd)
 }
