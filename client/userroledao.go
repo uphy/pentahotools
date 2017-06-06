@@ -84,6 +84,32 @@ func (c *Client) ChangeUserPassword(userName string, oldPassword string, newPass
 	}
 }
 
+// UpdatePassword changes the password of the specified user.
+func (c *Client) UpdatePassword(userName string, password string) error {
+	resp, err := c.client.R().
+		SetHeader("Content-Type", "application/json").
+		SetBody(map[string]interface{}{
+			"userName": userName,
+			"password": password,
+		}).
+		Put("api/userroledao/updatePassword")
+	switch resp.StatusCode() {
+	case 200:
+		return nil
+	case 400:
+		return errors.New("Provided data has invalid format")
+	case 403:
+		return errors.New("Provided user name or password is incorrect")
+	case 412:
+		return errors.New("An error occurred in the platform")
+	default:
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("Unknown error. statusCode=%d", resp.StatusCode())
+	}
+}
+
 // AssignRoleToUser assigns a user to the specified roles.
 func (c *Client) AssignRoleToUser(userName string, roles ...string) error {
 	resp, err := c.client.R().

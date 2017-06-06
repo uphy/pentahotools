@@ -33,6 +33,20 @@ var userroleChangeUserPasswordCmd = &cobra.Command{
 	},
 }
 
+var userroleUpdatePasswordCmd = &cobra.Command{
+	Use:   "update-password",
+	Short: "Change the user password.",
+	PreRunE: func(cmd *cobra.Command, args []string) error {
+		if len(args) != 2 {
+			return errors.New("Specify 2 arguments(username,newpassword)")
+		}
+		return nil
+	},
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return Client.UpdatePassword(args[0], args[1])
+	},
+}
+
 var file string
 
 var userroleCreateUserCmd = &cobra.Command{
@@ -270,6 +284,8 @@ func init() {
 	RootCmd.AddCommand(userroleCmd)
 
 	userroleCmd.AddCommand(userroleChangeUserPasswordCmd)
+
+	userroleCmd.AddCommand(userroleUpdatePasswordCmd)
 
 	userroleCreateUserCmd.PersistentFlags().StringVarP(&file, "file", "f", "", "Batch create from CSV file.")
 	userroleCmd.AddCommand(userroleCreateUserCmd)
