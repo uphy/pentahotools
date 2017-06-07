@@ -7,14 +7,55 @@ import (
 	"strings"
 )
 
+func (c *Client) Backup(output string) error {
+	resp, err := c.client.R().
+		SetOutput(output).
+		Get(fmt.Sprintf("api/repo/files/backup"))
+	switch resp.StatusCode() {
+	case 200:
+		return nil
+	case 403:
+		return errors.New("User does not have administrative permissions")
+	case 500:
+		return errors.New("Failure to complete the export")
+	default:
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("Unknown error. statusCode=%d", resp.StatusCode())
+	}
+}
+
+func (c *Client) Restore(input string, overwrite bool) error {
+	resp, err := c.client.R().
+		SetFile("fileUpload", input).
+		SetFormData(map[string]string{
+			"overwrite": strconv.FormatBool(overwrite),
+		}).
+		Post(fmt.Sprintf("api/repo/files/systemRestore"))
+	switch resp.StatusCode() {
+	case 200:
+		return nil
+	case 403:
+		return errors.New("User does not have administrative permissions")
+	case 500:
+		return errors.New("Failure to complete the export")
+	default:
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("Unknown error. statusCode=%d", resp.StatusCode())
+	}
+}
+
+// Tree list the children of the specified path.
 func (c *Client) Tree(path string, depth int, showHidden bool) (*FileEntry, error) {
-	c.client.Debug = true
-	root := FileEntry{}
+	var root FileEntry
 	resp, err := c.client.R().
 		SetQueryParam("showHidden", strconv.FormatBool(showHidden)).
 		SetQueryParam("depth", fmt.Sprintf("%d", depth)).
-		SetHeader("Content-Type", "application/json").
-		SetBody(&root).
+		SetHeader("Accept", "application/json").
+		SetResult(&root).
 		Get(fmt.Sprintf("api/repo/files/%s/tree", strings.Replace(path, "/", ":", -1)))
 	switch resp.StatusCode() {
 	case 200:
@@ -31,13 +72,20 @@ func (c *Client) Tree(path string, depth int, showHidden bool) (*FileEntry, erro
 	}
 }
 
+// FileEntry represents a file or directory.
+type FileEntry struct {
+	Children []FileEntry `json:"children"`
+	File     FileInfo    `json:"file"`
+}
+
+// FileInfo represents a file information.
 type FileInfo struct {
-	AclNode               string `json:"aclNode"`
+	ACLNode               string `json:"aclNode"`
 	CreatedDate           string `json:"createdDate"`
 	FileSize              string `json:"fileSize"`
 	Folder                string `json:"folder"`
 	Hidden                string `json:"hidden"`
-	Id                    string `json:"id"`
+	ID                    string `json:"id"`
 	Locale                string `json:"locale"`
 	Locked                string `json:"locked"`
 	Name                  string `json:"name"`
@@ -49,7 +97,16 @@ type FileInfo struct {
 	Versioned             string `json:"versioned"`
 	VersioningEnabled     string `json:"versioningEnabled"`
 }
-type FileEntry struct {
-	File     FileInfo    `json:"file"`
-	Children []FileEntry `json:"children,omitempty"`
+
+// Print prints the file entry recursively
+func (e *FileEntry) Print() {
+	e.print(0)
+}
+
+func (e *FileEntry) print(level int) {
+	indent := fmt.Sprintf(fmt.Sprintf("%%%ds", level*2), "")
+	fmt.Printf("%s%s (%s)\n", indent, e.File.Name, e.File.Path)
+	for _, entry := range e.Children {
+		entry.print(level + 1)
+	}
 }
