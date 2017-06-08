@@ -1,7 +1,14 @@
-box: tcnksm/gox
+box: golang
 
 build:
   steps:
+    - script:
+        name: Prepare box
+        code: |
+          apt-get update -y
+          apt-get install --no-install-recommends -y -q zip
+          rm -rf /var/lib/apt/lists/*
+          go get -u -v github.com/mitchellh/gox
     - setup-go-workspace:
         package-dir: github.com/uphy/pentahotools
     - script:
@@ -21,6 +28,6 @@ deploy:
     - tcnksm/ghr:
         token: $GITHUB_TOKEN
         input: dist
-        version: v0.1.0
+        version: v0.1.1
         pre_release: true
         replace: true
