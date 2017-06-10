@@ -6,10 +6,14 @@ import (
 	"strconv"
 	"strings"
 
+	"go.uber.org/zap"
+
 	"github.com/pkg/errors"
 )
 
+// Backup backups whole of the pentaho.
 func (c *Client) Backup(output string) error {
+	Logger.Debug("Backup", zap.String("output", output))
 	resp, err := c.client.R().
 		SetOutput(output).
 		Get(fmt.Sprintf("api/repo/files/backup"))
@@ -28,7 +32,9 @@ func (c *Client) Backup(output string) error {
 	}
 }
 
+// Restore restores whole of the pentaho from a file.
 func (c *Client) Restore(input string, overwrite bool) error {
+	Logger.Debug("Restore", zap.String("input", input), zap.Bool("overwrite", overwrite))
 	resp, err := c.client.R().
 		SetFile("fileUpload", input).
 		SetFormData(map[string]string{
@@ -52,6 +58,7 @@ func (c *Client) Restore(input string, overwrite bool) error {
 
 // Tree list the children of the specified path.
 func (c *Client) Tree(path string, depth int, showHidden bool) (*FileEntry, error) {
+	Logger.Debug("Tree", zap.String("path", path), zap.Int("depth", depth), zap.Bool("showHidden", showHidden))
 	var root FileEntry
 	resp, err := c.client.R().
 		SetQueryParam("showHidden", strconv.FormatBool(showHidden)).
@@ -76,8 +83,9 @@ func (c *Client) Tree(path string, depth int, showHidden bool) (*FileEntry, erro
 }
 
 // GetACL gets the access control list of file.
-func (c *Client) GetACL(path string) (*Acl, error) {
-	var acl Acl
+func (c *Client) GetACL(path string) (*ACL, error) {
+	Logger.Debug("GetACL", zap.String("path", path))
+	var acl ACL
 	resp, err := c.client.R().
 		SetHeader("Accept", "application/json").
 		SetResult(&acl).
@@ -100,8 +108,26 @@ func (c *Client) GetACL(path string) (*Acl, error) {
 	}
 }
 
+// Ac represents an access control
+type Ac struct {
+	Modifiable    string
+	Permissions   string
+	Recipient     string
+	RecipientType string
+}
+
+// ACL represents an access control list
+type ACL struct {
+	Aces              []Ac
+	EntriesInheriting string
+	ID                string
+	Owner             string
+	OwnerType         string
+}
+
 // PutFile put the file to the repository.
 func (c *Client) PutFile(file string, destination string) error {
+	Logger.Debug("PutFile", zap.String("file", file), zap.String("destination", destination))
 	data, err := ioutil.ReadFile(file)
 	if err != nil {
 		return err
@@ -127,6 +153,7 @@ func (c *Client) PutFile(file string, destination string) error {
 
 // GetFile gets file from the repository
 func (c *Client) GetFile(repositoryPath string, destination string) error {
+	Logger.Debug("GetFile", zap.String("repositoryPath", repositoryPath), zap.String("destination", destination))
 	resp, err := c.client.R().
 		SetOutput(destination).
 		Get(fmt.Sprintf("api/repo/files/%s", strings.Replace(repositoryPath, "/", ":", -1)))
@@ -146,14 +173,16 @@ func (c *Client) GetFile(repositoryPath string, destination string) error {
 	}
 }
 
-// DeleteFile delets file from the repository
-func (c *Client) DeleteFile(repositoryPath ...string) error {
-	return c.deleteFile(false, repositoryPath...)
+// DeleteFiles move file to trash folder of the repository.
+func (c *Client) DeleteFiles(repositoryPaths ...string) error {
+	Logger.Debug("DeleteFile", zap.Strings("repositoryPaths", repositoryPaths))
+	return c.deleteFile(false, repositoryPaths...)
 }
 
-// DeleteFilePermanent delets file from the repository
-func (c *Client) DeleteFilePermanent(repositoryPath ...string) error {
-	return c.deleteFile(true, repositoryPath...)
+// DeleteFilesPermanently deletes file from the repository.
+func (c *Client) DeleteFilesPermanently(repositoryPaths ...string) error {
+	Logger.Debug("DeleteFilesPermanently", zap.Strings("repositoryPaths", repositoryPaths))
+	return c.deleteFile(true, repositoryPaths...)
 }
 
 func (c *Client) deleteFile(permanent bool, repositoryPath ...string) error {
@@ -225,19 +254,4 @@ func (e *FileEntry) print(level int) {
 	for _, entry := range e.Children {
 		entry.print(level + 1)
 	}
-}
-
-type Ac struct {
-	Modifiable    string
-	Permissions   string
-	Recipient     string
-	RecipientType string
-}
-
-type Acl struct {
-	Aces              []Ac
-	EntriesInheriting string
-	ID                string
-	Owner             string
-	OwnerType         string
 }

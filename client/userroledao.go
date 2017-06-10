@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"go.uber.org/zap"
 )
 
 type user struct {
@@ -13,6 +15,7 @@ type user struct {
 
 // CreateUser creates new pentaho user
 func (c *Client) CreateUser(userName string, password string) error {
+	Logger.Debug("CreateUser", zap.String("userName", userName), zap.String("password", "*****"))
 	resp, err := c.client.R().
 		SetHeader("Content-Type", "application/xml").
 		SetBody(user{userName, password}).
@@ -34,8 +37,56 @@ func (c *Client) CreateUser(userName string, password string) error {
 	}
 }
 
-// DeleteUser deletes users
-func (c *Client) DeleteUser(userNames ...string) error {
+// CreateRole creates a role.
+func (c *Client) CreateRole(roleName string) error {
+	Logger.Debug("CreateRole", zap.String("roleName", roleName))
+	resp, err := c.client.R().
+		SetQueryParam("roleName", roleName).
+		Put("api/userroledao/createRole?roleName=rName")
+	switch resp.StatusCode() {
+	case 200:
+		return nil
+	case 400:
+		return errors.New("Provided data has invalid format")
+	case 403:
+		return errors.New("Only users with administrative privileges can access this method")
+	case 412:
+		return errors.New("Unable to create role objects")
+	default:
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("Unknown error. statusCode=%d", resp.StatusCode())
+	}
+}
+
+// DeleteRoles deletes roles
+func (c *Client) DeleteRoles(roleNames ...string) error {
+	Logger.Debug("DeleteRoles", zap.Strings("roleNames", roleNames))
+	if len(roleNames) == 0 {
+		return errors.New("Specify at least one role")
+	}
+	resp, err := c.client.R().
+		SetQueryParam("roleNames", strings.Join(roleNames, "\t")+"\t").
+		Put("api/userroledao/deleteRoles")
+	switch resp.StatusCode() {
+	case 200:
+		return nil
+	case 403:
+		return errors.New("Only users with administrative privileges can access this method")
+	case 500:
+		return errors.New("The system was unable to delete the roles passed in")
+	default:
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("Unknown error. statusCode=%d", resp.StatusCode())
+	}
+}
+
+// DeleteUsers deletes users
+func (c *Client) DeleteUsers(userNames ...string) error {
+	Logger.Debug("DeleteUsers", zap.Strings("userNames", userNames))
 	if len(userNames) == 0 {
 		return errors.New("Specify atleast one user")
 	}
@@ -59,6 +110,7 @@ func (c *Client) DeleteUser(userNames ...string) error {
 
 // ChangeUserPassword changes the password of the specified user.
 func (c *Client) ChangeUserPassword(userName string, oldPassword string, newPassword string) error {
+	Logger.Debug("ChangeUserPassword", zap.String("userName", userName), zap.String("oldPassword", "*****"), zap.String("newPassword", "*****"))
 	resp, err := c.client.R().
 		SetHeader("Content-Type", "application/json").
 		SetBody(map[string]interface{}{
@@ -86,6 +138,7 @@ func (c *Client) ChangeUserPassword(userName string, oldPassword string, newPass
 
 // UpdatePassword changes the password of the specified user.
 func (c *Client) UpdatePassword(userName string, password string) error {
+	Logger.Debug("UpdatePassword", zap.String("userName", userName), zap.String("password", "*****"))
 	resp, err := c.client.R().
 		SetHeader("Content-Type", "application/json").
 		SetBody(map[string]interface{}{
@@ -110,8 +163,9 @@ func (c *Client) UpdatePassword(userName string, password string) error {
 	}
 }
 
-// AssignRoleToUser assigns a user to the specified roles.
-func (c *Client) AssignRoleToUser(userName string, roles ...string) error {
+// AssignRolesToUser assigns a user to the specified roles.
+func (c *Client) AssignRolesToUser(userName string, roles ...string) error {
+	Logger.Debug("AssignRolesToUser", zap.String("userName", userName), zap.Strings("roles", roles))
 	resp, err := c.client.R().
 		SetQueryParam("userName", userName).
 		SetQueryParam("roleNames", strings.Join(roles, "\t")).
@@ -131,8 +185,9 @@ func (c *Client) AssignRoleToUser(userName string, roles ...string) error {
 	}
 }
 
-// RemoveRoleFromUser removes a user from the specified roles.
-func (c *Client) RemoveRoleFromUser(userName string, roles ...string) error {
+// RemoveRolesFromUser removes a user from the specified roles.
+func (c *Client) RemoveRolesFromUser(userName string, roles ...string) error {
+	Logger.Debug("RemoveRolesFromUser", zap.String("userName", userName), zap.Strings("roles", roles))
 	resp, err := c.client.R().
 		SetQueryParam("userName", userName).
 		SetQueryParam("roleNames", strings.Join(roles, "\t")).

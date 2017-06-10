@@ -1,5 +1,7 @@
 package pentahoclient
 
+import "go.uber.org/zap"
+
 type userList struct {
 	Users []string `xml:"users"`
 }
@@ -18,7 +20,7 @@ type roles struct {
 
 // ListUsers function lists all users.
 func (c *Client) ListUsers() (*[]string, error) {
-	logger.Info("ListUser")
+	Logger.Debug("ListUsers")
 	var t userList
 	_, err := c.client.R().
 		SetResult(&t).
@@ -28,6 +30,7 @@ func (c *Client) ListUsers() (*[]string, error) {
 
 // ListPermissionUsers function lists all users.
 func (c *Client) ListPermissionUsers() (*[]string, error) {
+	Logger.Debug("ListPermissionUsers")
 	var t userList
 	_, err := c.client.R().
 		SetResult(&t).
@@ -37,6 +40,7 @@ func (c *Client) ListPermissionUsers() (*[]string, error) {
 
 // ListUsersInRole lists the users in role
 func (c *Client) ListUsersInRole(role string) (*[]string, error) {
+	Logger.Debug("ListUsersInRole", zap.String("role", role))
 	var t users
 	_, err := c.client.R().
 		SetResult(&t).
@@ -47,6 +51,7 @@ func (c *Client) ListUsersInRole(role string) (*[]string, error) {
 
 // ListRoles function lists all roles.
 func (c *Client) ListRoles() (*[]string, error) {
+	Logger.Debug("ListRoles")
 	var t roleList
 	_, err := c.client.R().
 		SetResult(&t).
@@ -56,6 +61,7 @@ func (c *Client) ListRoles() (*[]string, error) {
 
 // ListAllRoles function lists all roles.
 func (c *Client) ListAllRoles() (*[]string, error) {
+	Logger.Debug("ListAllRoles")
 	var t roleList
 	_, err := c.client.R().
 		SetResult(&t).
@@ -65,6 +71,7 @@ func (c *Client) ListAllRoles() (*[]string, error) {
 
 // ListExtraRoles function lists all roles.
 func (c *Client) ListExtraRoles() (*[]string, error) {
+	Logger.Debug("ListExtraRoles")
 	var t roleList
 	_, err := c.client.R().
 		SetResult(&t).
@@ -74,6 +81,7 @@ func (c *Client) ListExtraRoles() (*[]string, error) {
 
 // ListPermissionRoles function lists all roles.
 func (c *Client) ListPermissionRoles() (*[]string, error) {
+	Logger.Debug("ListPermissionRoles")
 	var t roleList
 	_, err := c.client.R().
 		SetResult(&t).
@@ -83,6 +91,7 @@ func (c *Client) ListPermissionRoles() (*[]string, error) {
 
 // ListSystemRoles function lists all roles.
 func (c *Client) ListSystemRoles() (*[]string, error) {
+	Logger.Debug("ListSystemRoles")
 	var t roleList
 	_, err := c.client.R().
 		SetResult(&t).
@@ -92,6 +101,7 @@ func (c *Client) ListSystemRoles() (*[]string, error) {
 
 // ListRolesForUser function lists all roles for the specified user.
 func (c *Client) ListRolesForUser(user string) (*[]string, error) {
+	Logger.Debug("ListRolesForUser", zap.String("user", user))
 	var t roles
 	_, err := c.client.R().
 		SetResult(&t).

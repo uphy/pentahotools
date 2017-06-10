@@ -15,9 +15,9 @@ var fileCmd = &cobra.Command{
 	},
 }
 
-var fileLsCmd = &cobra.Command{
-	Use:   "ls",
-	Short: "List files.",
+var fileTreeCmd = &cobra.Command{
+	Use:   "tree",
+	Short: "List the tree of files.",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var path string
 		if len(args) > 0 {
@@ -106,7 +106,7 @@ var fileDeleteFileCmd = &cobra.Command{
 		return nil
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		err := Client.DeleteFile(args...)
+		err := Client.DeleteFiles(args...)
 		return err
 	},
 }
@@ -114,9 +114,9 @@ var fileDeleteFileCmd = &cobra.Command{
 func init() {
 	RootCmd.AddCommand(fileCmd)
 
-	fileLsCmd.Flags().BoolP("showHidden", "s", false, "Show hidden files")
-	fileLsCmd.Flags().IntP("depth", "d", 1, "The depth of the tree")
-	fileCmd.AddCommand(fileLsCmd)
+	fileTreeCmd.Flags().BoolP("showHidden", "s", false, "Show hidden files")
+	fileTreeCmd.Flags().IntP("depth", "d", 1, "The depth of the tree")
+	fileCmd.AddCommand(fileTreeCmd)
 
 	fileCmd.AddCommand(fileBackupCmd)
 	fileCmd.AddCommand(filePutCmd)

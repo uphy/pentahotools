@@ -1,8 +1,10 @@
 package cmd
 
 import (
+	"bufio"
 	"fmt"
 	"os"
+	"os/exec"
 
 	client "github.com/uphy/pentahotools/client"
 
@@ -26,6 +28,40 @@ var RootCmd = &cobra.Command{
 	Use:   "pentahotools",
 	Short: "Pentaho CLI Tools",
 	Long:  `Manage users, PDI jobs/transformations, repositositories.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Println("Entering multiple command mode.")
+		fmt.Println("Input 'exit' to exit this command.")
+		reader := bufio.NewReader(os.Stdin)
+		for {
+			fmt.Print("> ")
+			commandLine, _ := reader.ReadString('\n')
+			commandLine = strings.TrimRight(commandLine, "\r\n ")
+			if len(commandLine) == 0 {
+				cmd.Help()
+				continue
+			}
+			if commandLine == "exit" {
+				break
+			}
+			splitedCommandLine := strings.Split(commandLine, " ")
+			subProcessArgs := append(os.Args, splitedCommandLine...)
+			subProcessCommand := exec.Command(subProcessArgs[0], subProcessArgs[1:]...)
+			stdout, err := subProcessCommand.StdoutPipe()
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+			subProcessCommand.Start()
+
+			scanner := bufio.NewScanner(stdout)
+			for scanner.Scan() {
+				fmt.Print(scanner.Text())
+				fmt.Println()
+			}
+
+			subProcessCommand.Wait()
+		}
+	},
 }
 
 // Execute adds all child commands to the root command sets flags appropriately.
