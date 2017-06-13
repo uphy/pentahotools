@@ -66,12 +66,13 @@ func DeleteUsers(users []string, deleteHomeDirectory bool, bar *pb.ProgressBar) 
 // CreateUsersInFile registers users from a file
 func CreateUsersInFile(file string, bar *pb.ProgressBar) error {
 	// getting user names from the repository
-	allUsersSet, err := listExistingUsers()
+	allUsersSetLower, err := listExistingUsers()
 	if err != nil {
 		return errors.Wrap(err, "failed to get the list of users")
 	}
+	usersNotInFileLower := allUsersSetLower.Clone()
 	// getting role names from the repository
-	allRolesSet, err := listExistingRoles()
+	allRolesSetLower, err := listExistingRoles()
 	if err != nil {
 		return errors.Wrap(err, "failed to get the list of roles")
 	}
@@ -89,15 +90,16 @@ func CreateUsersInFile(file string, bar *pb.ProgressBar) error {
 			break
 		}
 		bar.Prefix("User: " + userRow.Name)
+		usersNotInFileLower.Remove(strings.ToLower(userRow.Name))
 
-		currentRoles, err := listRolesForUser(userRow.Name)
+		currentRolesLower, currentRolesMap, err := listRolesForUser(userRow.Name)
 		if err != nil {
 			client.Logger.Warn("Failed to list roles for user.", zap.String("user", userRow.Name), zap.Error(err))
 			continue
 		}
 
 		// create user and change password if needed
-		if allUsersSet.Contains(strings.ToLower(userRow.Name)) {
+		if allUsersSetLower.Contains(strings.ToLower(userRow.Name)) {
 			if len(password) > 0 {
 				err = Client.UpdatePassword(userRow.Name, userRow.Password)
 				if err != nil {
@@ -118,13 +120,14 @@ func CreateUsersInFile(file string, bar *pb.ProgressBar) error {
 		// assign roles
 		assigningRoles := []string{}
 		for _, role := range userRow.Roles {
-			if !allRolesSet.Contains(role) {
+			roleLower := strings.ToLower(role)
+			if !allRolesSetLower.Contains(roleLower) {
 				err = Client.CreateRole(role)
 				if err != nil {
 					client.Logger.Warn("Failed to create role.", zap.String("role", role), zap.Error(err))
 				}
 			}
-			if !currentRoles.Contains(strings.ToLower(role)) {
+			if !currentRolesLower.Contains(roleLower) {
 				assigningRoles = append(assigningRoles, role)
 			}
 		}
@@ -136,10 +139,11 @@ func CreateUsersInFile(file string, bar *pb.ProgressBar) error {
 		}
 		// remove roles
 		removingRoles := []string{}
-		for _, role := range currentRoles.ToSlice() {
-			roleString := role.(string)
-			if !userRow.RoleSet.Contains(role) && strings.ToLower(roleString) != "authenticated" {
-				removingRoles = append(removingRoles, roleString)
+		for _, roleLower := range currentRolesLower.ToSlice() {
+			roleLowerString := roleLower.(string)
+			if !userRow.RoleSet.Contains(roleLower) && roleLowerString != "authenticated" {
+				roleOriginal := currentRolesMap[roleLowerString]
+				removingRoles = append(removingRoles, roleOriginal)
 			}
 		}
 		if len(removingRoles) > 0 {
@@ -151,15 +155,46 @@ func CreateUsersInFile(file string, bar *pb.ProgressBar) error {
 
 		bar.Increment()
 	}
+	// Delete users not in the input file
+	usersNotInFileLower.Remove("admin")
+	if usersNotInFileLower.Cardinality() > 0 {
+		bar.Total += int64(usersNotInFileLower.Cardinality())
+		for _, user := range usersNotInFileLower.ToSlice() {
+			userString := user.(string)
+			bar.Prefix("Remove roles: " + userString)
+			rolesSetLower, roleMap, err := listRolesForUser(userString)
+			if err != nil {
+				client.Logger.Warn("Failed to list the roles of the user which doesn't exist in the input file.", zap.String("user", userString), zap.String("file", file))
+				bar.Increment()
+				continue
+			}
+			var filteredRoles []string
+			for _, role := range rolesSetLower.ToSlice() {
+				if role == "authenticated" {
+					continue
+				}
+				filteredRoles = append(filteredRoles, roleMap[role.(string)])
+			}
+			fmt.Println(filteredRoles)
+			err = Client.RemoveRolesFromUser(userString, filteredRoles...)
+			if err != nil {
+				client.Logger.Warn("Failed to remove roles of the user which doesn't exist in the input file.", zap.String("user", userString), zap.String("roles", rolesSetLower.String()), zap.String("file", file))
+				bar.Increment()
+				continue
+			}
+			bar.Increment()
+		}
+	}
 	return nil
 }
 
-func listRolesForUser(userName string) (mapset.Set, error) {
+func listRolesForUser(userName string) (mapset.Set, map[string]string, error) {
 	roles, err := Client.ListRolesForUser(userName)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return stringArrayToSetIgnoreCase(roles), nil
+	lowerToOriginalMap := map[string]string{}
+	return stringArrayToSetIgnoreCase(roles, lowerToOriginalMap), lowerToOriginalMap, nil
 }
 
 func listExistingUsers() (mapset.Set, error) {
@@ -167,21 +202,26 @@ func listExistingUsers() (mapset.Set, error) {
 	if err != nil {
 		return nil, err
 	}
-	return stringArrayToSetIgnoreCase(users), nil
+	return stringArrayToSetIgnoreCase(users, nil), nil
 }
 
 func listExistingRoles() (mapset.Set, error) {
-	roles, err := Client.ListRoles()
+	roles, err := Client.ListAllRoles()
 	if err != nil {
 		return nil, err
 	}
-	return stringArrayToSetIgnoreCase(roles), nil
+	return stringArrayToSetIgnoreCase(roles, nil), nil
 }
 
-func stringArrayToSetIgnoreCase(array *[]string) mapset.Set {
+func stringArrayToSetIgnoreCase(array *[]string, lowerToOriginalMap map[string]string) mapset.Set {
 	set := mapset.NewSet()
 	for _, elm := range *array {
-		set.Add(strings.ToLower(elm))
+		lower := strings.ToLower(elm)
+		set.Add(lower)
+		if lowerToOriginalMap != nil {
+			lowerToOriginalMap[lower] = elm
+		}
+
 	}
 	return set
 }
@@ -235,7 +275,7 @@ func (t *UserTable) Read() *UserRow {
 		}
 		userName := strings.TrimSpace(t.row[0])
 		roles := strings.Split(strings.TrimSpace(t.row[1]), ":")
-		roleSet := stringArrayToSetIgnoreCase(&roles)
+		roleSet := stringArrayToSetIgnoreCase(&roles, nil)
 		password := strings.TrimSpace(t.row[2])
 		if len(userName) == 0 {
 			continue
