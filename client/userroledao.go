@@ -8,21 +8,6 @@ import (
 	"go.uber.org/zap"
 )
 
-const (
-	// PermissionExecute is a permission to execute job/transformations.
-	PermissionExecute = "org.pentaho.repository.execute"
-	// PermissionDataSourceManagement is a permission to manage the datasources.
-	PermissionDataSourceManagement = "org.pentaho.platform.dataaccess.datasource.security.manage"
-	// PermissionContentRead is a permission to read the contents.
-	PermissionContentRead = "org.pentaho.repository.read"
-	// PermissionContentSchedule is a permission to schedule the contents.
-	PermissionContentSchedule = "org.pentaho.scheduler.manage"
-	// PermissionSecurityAdministration is a permission to administer the security.
-	PermissionSecurityAdministration = "org.pentaho.security.administerSecurity"
-	// PermissionContentPublish is a permission to publish contents.
-	PermissionContentPublish = "org.pentaho.security.publish"
-)
-
 type user struct {
 	UserName string `xml:"userName"`
 	Password string `xml:"password"`
@@ -302,19 +287,4 @@ func (m *SystemRolesMap) getLocalizedName(logicalRole string) string {
 		}
 	}
 	return ""
-}
-
-// Print prints the SystemRoleMap
-func (m *SystemRolesMap) Print() {
-	for _, a := range m.Assignments {
-		if a.Immutable == "true" {
-			fmt.Println(a.RoleName + " (Immutable)")
-		} else {
-			fmt.Println(a.RoleName)
-		}
-		for _, r := range a.LogicalRoles {
-			fmt.Printf("- %s <%s>\n", m.getLocalizedName(r), r)
-		}
-		fmt.Println()
-	}
 }

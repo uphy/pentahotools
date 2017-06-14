@@ -85,14 +85,27 @@ var userroleListPermissionsCmd = &cobra.Command{
 	Use:   "list-permissions",
 	Short: "List the permissions for the role.",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		permissions, err := Client.ListPermissionsForRoles()
+		var roles *[]Role
+		var err error
+		switch len(args) {
+		case 0:
+			roles, err = NewRoleClient(&Client).FindAllRoles()
+		case 1:
+			var role *Role
+			role, err = NewRoleClient(&Client).FindRole(args[0])
+			roles = &([]Role{*role})
+		}
 		if err != nil {
 			return errors.Wrap(err, "Failed to list the permissions for roles")
 		}
-		permissions.Print()
+		for _, role := range *roles {
+			role.Print()
+			fmt.Println()
+		}
 		return nil
 	},
 }
+
 var userroleAssignPermissionsCmd = &cobra.Command{
 	Use:   "assign-permissions",
 	Short: "Assign the permissions to the role.",
@@ -107,6 +120,37 @@ var userroleAssignPermissionsCmd = &cobra.Command{
 		return nil
 	},
 }
+
+var userroleAddPermissionsCmd = &cobra.Command{
+	Use:   "add-permissions",
+	Short: "Add the permissions to the role.",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if len(args) < 2 {
+			return errors.New("specify role name and permissions")
+		}
+		err := NewRoleClient(&Client).AddPermissionsToRole(args[0], args[1:]...)
+		if err != nil {
+			return errors.Wrap(err, fmt.Sprintf("Failed to add the permissions to the role. (role=%s, permissions=%s)", args[0], args[1:]))
+		}
+		return nil
+	},
+}
+
+var userroleRemovePermissionsCmd = &cobra.Command{
+	Use:   "remove-permissions",
+	Short: "Remove the permissions from the role.",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if len(args) < 2 {
+			return errors.New("specify role name and permissions")
+		}
+		err := NewRoleClient(&Client).RemovePermissionsFromRole(args[0], args[1:]...)
+		if err != nil {
+			return errors.Wrap(err, fmt.Sprintf("Failed to add the permissions to the role. (role=%s, permissions=%s)", args[0], args[1:]))
+		}
+		return nil
+	},
+}
+
 var file string
 
 var userroleCreateUserCmd = &cobra.Command{
@@ -298,6 +342,8 @@ func init() {
 	userroleCmd.AddCommand(userroleDeleteRoleCmd)
 	userroleCmd.AddCommand(userroleListPermissionsCmd)
 	userroleCmd.AddCommand(userroleAssignPermissionsCmd)
+	userroleCmd.AddCommand(userroleAddPermissionsCmd)
+	userroleCmd.AddCommand(userroleRemovePermissionsCmd)
 
 	userroleCreateUserCmd.PersistentFlags().StringVarP(&file, "file", "f", "", "Batch create from CSV file.")
 	userroleCmd.AddCommand(userroleCreateUserCmd)
