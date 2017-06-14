@@ -9,12 +9,12 @@ import (
 	"golang.org/x/text/transform"
 )
 
-type csvTable struct {
+type csvTableReader struct {
 	file   *os.File
 	reader *csv.Reader
 }
 
-func newCsvTable(file string) (Table, error) {
+func newCsvTableReader(file string) (Reader, error) {
 	f, err := os.Open(file)
 	if err != nil {
 		return nil, errors.Wrap(err, "csv file open failed")
@@ -27,13 +27,13 @@ func newCsvTable(file string) (Table, error) {
 		return nil, err
 	}
 
-	return &csvTable{
+	return &csvTableReader{
 		file:   f,
 		reader: reader,
 	}, nil
 }
 
-func (t *csvTable) ReadRow(row *[]string) bool {
+func (t *csvTableReader) ReadRow(row *[]string) bool {
 	r, err := t.reader.Read()
 	if err != nil {
 		return false
@@ -48,6 +48,33 @@ func (t *csvTable) ReadRow(row *[]string) bool {
 	return true
 }
 
-func (t *csvTable) Close() error {
+func (t *csvTableReader) Close() error {
 	return t.file.Close()
+}
+
+type csvTableWriter struct {
+	file   *os.File
+	writer *csv.Writer
+}
+
+func newCsvTableWriter(file string) (Writer, error) {
+	f, err := os.Create(file)
+	if err != nil {
+		return nil, errors.Wrap(err, "csv file open failed")
+	}
+	writer := csv.NewWriter(transform.NewWriter(f, japanese.ShiftJIS.NewDecoder()))
+	return &csvTableWriter{f, writer}, nil
+}
+
+func (c *csvTableWriter) WriteHeader(row *[]string) error {
+	return c.WriteRow(row)
+}
+
+func (c *csvTableWriter) WriteRow(row *[]string) error {
+	return c.writer.Write(*row)
+}
+
+func (c *csvTableWriter) Close() error {
+	c.writer.Flush()
+	return c.file.Close()
 }

@@ -8,6 +8,21 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	// PermissionExecute is a permission to execute job/transformations.
+	PermissionExecute = "org.pentaho.repository.execute"
+	// PermissionDataSourceManagement is a permission to manage the datasources.
+	PermissionDataSourceManagement = "org.pentaho.platform.dataaccess.datasource.security.manage"
+	// PermissionContentRead is a permission to read the contents.
+	PermissionContentRead = "org.pentaho.repository.read"
+	// PermissionContentSchedule is a permission to schedule the contents.
+	PermissionContentSchedule = "org.pentaho.scheduler.manage"
+	// PermissionSecurityAdministration is a permission to administer the security.
+	PermissionSecurityAdministration = "org.pentaho.security.administerSecurity"
+	// PermissionContentPublish is a permission to publish contents.
+	PermissionContentPublish = "org.pentaho.security.publish"
+)
+
 type user struct {
 	UserName string `xml:"userName"`
 	Password string `xml:"password"`
@@ -204,5 +219,102 @@ func (c *Client) RemoveRolesFromUser(userName string, roles ...string) error {
 			return err
 		}
 		return fmt.Errorf("Unknown error. statusCode=%d", resp.StatusCode())
+	}
+}
+
+// ListPermissionsForRoles get the list of permissions for each roles.
+func (c *Client) ListPermissionsForRoles() (*SystemRolesMap, error) {
+	Logger.Debug("ListPermissionsForRoles")
+	var result SystemRolesMap
+	resp, err := c.client.R().
+		SetQueryParam("locale", "en").
+		SetResult(&result).
+		SetHeader("Accept", "application/xml").
+		Get("api/userroledao/logicalRoleMap")
+	switch resp.StatusCode() {
+	case 200:
+		return &result, nil
+	case 403:
+		return nil, errors.New("Only users with administrative privileges can access this method")
+	default:
+		if err != nil {
+			return nil, err
+		}
+		return nil, fmt.Errorf("Unknown error. statusCode=%d", resp.StatusCode())
+	}
+}
+
+// AssignPermissionsToRole assign permissions to the role.
+func (c *Client) AssignPermissionsToRole(role string, permissions ...string) error {
+	Logger.Debug("AssignPermissionsToRole")
+	var m SystemRolesMap
+	m.Assignments = append(m.Assignments, Assignment{
+		RoleName:     role,
+		LogicalRoles: permissions,
+	})
+
+	// add XMLName for modifying the tagname of the root xml element.
+	body := struct {
+		SystemRolesMap
+		XMLName struct{} `xml:"systemRolesMap"`
+	}{SystemRolesMap: m}
+
+	resp, err := c.client.R().
+		SetBody(body).
+		SetHeader("Content-Type", "application/xml").
+		Put("api/userroledao/roleAssignments")
+	switch resp.StatusCode() {
+	case 200:
+		return nil
+	case 403:
+		return errors.New("Only users with administrative privileges can access this method")
+	default:
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("Unknown error. statusCode=%d", resp.StatusCode())
+	}
+}
+
+// Assignment represents a role information.
+type Assignment struct {
+	Immutable    string   `xml:"immutable"`
+	LogicalRoles []string `xml:"logicalRoles"`
+	RoleName     string   `xml:"roleName"`
+}
+
+// LocalizedRoleName reprensents the pair of the role name and localized role name.
+type LocalizedRoleName struct {
+	LocalizedName string `xml:"localizedName"`
+	RoleName      string `xml:"roleName"`
+}
+
+// SystemRolesMap represents the permissions for the roles.
+type SystemRolesMap struct {
+	Assignments        []Assignment        `xml:"assignments"`
+	LocalizedRoleNames []LocalizedRoleName `xml:"localizedRoleNames"`
+}
+
+func (m *SystemRolesMap) getLocalizedName(logicalRole string) string {
+	for _, l := range m.LocalizedRoleNames {
+		if l.RoleName == logicalRole {
+			return l.LocalizedName
+		}
+	}
+	return ""
+}
+
+// Print prints the SystemRoleMap
+func (m *SystemRolesMap) Print() {
+	for _, a := range m.Assignments {
+		if a.Immutable == "true" {
+			fmt.Println(a.RoleName + " (Immutable)")
+		} else {
+			fmt.Println(a.RoleName)
+		}
+		for _, r := range a.LogicalRoles {
+			fmt.Printf("- %s <%s>\n", m.getLocalizedName(r), r)
+		}
+		fmt.Println()
 	}
 }

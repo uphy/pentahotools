@@ -14,6 +14,42 @@ import (
 	"gopkg.in/cheggaaa/pb.v1"
 )
 
+// ExportUsers exports user list to the file.
+func ExportUsers(file string, bar *pb.ProgressBar) error {
+	bar.Prefix("List users")
+	users, err := Client.ListUsers()
+	if err != nil {
+		return errors.Wrap(err, "failed to get the list of users.")
+	}
+	bar.Total = int64(len(*users))
+
+	writer, err := table.NewWriter(file)
+	if err != nil {
+		return err
+	}
+	defer writer.Close()
+	writer.WriteHeader(&[]string{"User", "Roles"})
+	for _, user := range *users {
+		bar.Prefix("Roles for " + user)
+		roles, err := Client.ListRolesForUser(user)
+		if err != nil {
+			client.Logger.Warn("Failed to list roles for user.", zap.String("user", user))
+			bar.Increment()
+			continue
+		}
+		var filteredRoles []string
+		for _, role := range *roles {
+			if role == "Authenticated" {
+				continue
+			}
+			filteredRoles = append(filteredRoles, role)
+		}
+		writer.WriteRow(&[]string{user, strings.Join(filteredRoles, ":")})
+		bar.Increment()
+	}
+	return nil
+}
+
 // DeleteUsersInFile delete users in file
 func DeleteUsersInFile(file string, deleteHomeDirectory bool, bar *pb.ProgressBar) error {
 	userTable, err := NewUserTable(file)
@@ -232,7 +268,7 @@ func NewUserTable(file string) (*UserTable, error) {
 	row = make([]string, 3) // 3 columns; username, role, password
 
 	// scan table
-	tmpTable, err := table.New(file)
+	tmpTable, err := table.NewReader(file)
 	if err != nil {
 		return nil, err
 	}
@@ -248,7 +284,7 @@ func NewUserTable(file string) (*UserTable, error) {
 	}
 
 	// create table
-	table, err := table.New(file)
+	table, err := table.NewReader(file)
 	if err != nil {
 		return nil, err
 	}
@@ -257,7 +293,7 @@ func NewUserTable(file string) (*UserTable, error) {
 
 // UserTable represents a list of users from table structure files.
 type UserTable struct {
-	table table.Table
+	table table.Reader
 	row   []string
 	count int
 }

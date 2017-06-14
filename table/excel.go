@@ -10,7 +10,7 @@ type excelTable struct {
 	row   int
 }
 
-func newExcelTable(file string) (Table, error) {
+func newExcelTableReader(file string) (Reader, error) {
 	xlsxFile, err := xlsx.OpenFile(file)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to read excel file")
@@ -42,4 +42,59 @@ func (t *excelTable) ReadRow(row *[]string) bool {
 }
 func (t *excelTable) Close() error {
 	return nil
+}
+
+type excelTableWriter struct {
+	file  *xlsx.File
+	sheet *xlsx.Sheet
+	path  string
+}
+
+func newExcelTableWriter(file string) (Writer, error) {
+	xlsxFile := xlsx.NewFile()
+	sheet, err := xlsxFile.AddSheet("UserList")
+	if err != nil {
+		return nil, err
+	}
+	return &excelTableWriter{xlsxFile, sheet, file}, nil
+}
+
+func (c *excelTableWriter) WriteHeader(row *[]string) error {
+	c.writeRow(row, true)
+	return nil
+}
+
+func (c *excelTableWriter) WriteRow(row *[]string) error {
+	c.writeRow(row, false)
+	return nil
+}
+
+func (c *excelTableWriter) writeRow(row *[]string, isHeader bool) {
+	r := c.sheet.AddRow()
+	for _, s := range *row {
+		cell := r.AddCell()
+		cell.SetString(s)
+		style := cell.GetStyle()
+		style.Border = *xlsx.NewBorder("thin", "thin", "thin", "thin")
+		if isHeader {
+			style.Font.Bold = true
+			style.Alignment.Horizontal = "center"
+		}
+	}
+}
+
+func setHeaderString(cell *xlsx.Cell, header string) {
+	setString(cell, header)
+}
+
+func setString(cell *xlsx.Cell, value string) {
+	cell.SetString(value)
+	cell.GetStyle().Border = *xlsx.NewBorder("thin", "thin", "thin", "thin")
+}
+
+func (c *excelTableWriter) Close() error {
+	for _, col := range c.sheet.Cols {
+		col.Width = 30
+	}
+	return c.file.Save(c.path)
 }
