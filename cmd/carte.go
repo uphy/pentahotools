@@ -1,15 +1,20 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"regexp"
 
 	"github.com/olekukonko/tablewriter"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	client "github.com/uphy/pentahotools/client"
 )
+
+func isJobId(name string) bool {
+	matched, _ := regexp.Match(`[a-f0-9]{8}\-[a-f0-9]{4}\-[a-f0-9]{4}\-[a-f0-9]{4}\-[a-f0-9]{12}`, []byte(name))
+	return matched
+}
 
 func init() {
 	var carteCmd = &cobra.Command{
@@ -63,10 +68,9 @@ func init() {
 				return nil
 			}
 			// Show transformation status
-			matched, _ := regexp.Match(`[a-f0-9]{8}\-[a-f0-9]{4}\-[a-f0-9]{4}\-[a-f0-9]{4}\-[a-f0-9]{12}`, []byte(args[0]))
 			var status client.Status
 			var err error
-			if matched {
+			if isJobId(args[0]) {
 				status, err = Client.GetStatus(args[0], "")
 			} else {
 				status, err = Client.GetStatus("", args[0])
@@ -78,4 +82,64 @@ func init() {
 			return nil
 		},
 	})
+	carteCmd.AddCommand(&cobra.Command{
+		Use:   "run",
+		Short: "Run the specified job or transformation.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) != 1 {
+				return errors.New("specify a job")
+			}
+			jobID, err := Client.RunJob(args[0])
+			if err != nil {
+				return errors.Wrap(err, "job execution failure")
+			}
+			job, err := Client.GetJobInfo(jobID)
+			if err != nil {
+				return errors.Wrap(err, "getting job info failed")
+			}
+			fmt.Println(job)
+			return nil
+		},
+	})
+
+	removeCmd := &cobra.Command{
+		Use:   "remove",
+		Short: "Remove the specified job/transformation.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if all, _ := cmd.Flags().GetBool("all"); all {
+				status, err := Client.GetStatusCarteServer()
+				if err != nil {
+					return errors.Wrap(err, "getting job list failure")
+				}
+				for _, job := range status.JobStatusList.List {
+					err = Client.RemoveJob(job.ID, job.Name)
+					if err != nil {
+						return errors.Wrap(err, "job removal failure")
+					}
+				}
+				for _, trans := range status.TransformationStatusList.List {
+					err = Client.RemoveTransformation(trans.ID, trans.Name)
+					if err != nil {
+						return errors.Wrap(err, "transformation removal failure")
+					}
+				}
+			} else {
+				if len(args) != 1 {
+					return errors.New("specify a job or transformation")
+				}
+				var err error
+				if isJobId(args[0]) {
+					err = Client.RemoveJob(args[0], "")
+				} else {
+					err = Client.RemoveJob("", args[0])
+				}
+				if err != nil {
+					return errors.Wrap(err, "job removal failure")
+				}
+			}
+			return nil
+		},
+	}
+	removeCmd.Flags().BoolP("all", "a", false, "Remove all finished job/transformations.")
+	carteCmd.AddCommand(removeCmd)
 }
