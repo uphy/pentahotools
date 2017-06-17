@@ -8,6 +8,8 @@ import (
 	"io/ioutil"
 	"strings"
 
+	"encoding/xml"
+
 	"go.uber.org/zap"
 )
 
@@ -197,13 +199,83 @@ func decodeLoggingString(loggingString string) string {
 	return string(decoded)
 }
 
-// RunJob run the specified job now.
-func (c *Client) RunJob(file string) (string, error) {
+// Run runs a job.
+func (c *Client) Run(file string, level LogLevel) (string, error) {
+	if strings.HasSuffix(file, ".kjb") {
+		return c.RunJob(file, level)
+	} else if strings.HasSuffix(file, ".ktr") {
+		return c.RunTransformation(file, level)
+	} else {
+		return "", errors.New("unknown file:" + file)
+	}
+}
+
+// RunJob runs a job.
+func (c *Client) RunJob(file string, level LogLevel) (string, error) {
 	Logger.Debug("RunJob", zap.String("file", file))
-	return c.ScheduleJob(&JobScheduleRequest{
-		InputFile:       file,
-		RunInBackground: true,
-	})
+	if strings.HasSuffix(file, ".kjb") {
+		file = file[0 : len(file)-4]
+	}
+	resp, err := c.client.R().
+		SetFormData(map[string]string{
+			"job":   file,
+			"level": string(level),
+		}).
+		SetHeader("Accept", "*/*").
+		Post("kettle/runJob/")
+	switch resp.StatusCode() {
+	case 200:
+		var result WebResult
+		xml.Unmarshal(resp.Body(), &result)
+		if result.Result != "OK" {
+			return "", errors.New(result.Message)
+		}
+		return result.ID, nil
+	case 500:
+		return "", errors.New("server error")
+	default:
+		if err != nil {
+			return "", err
+		}
+		return "", fmt.Errorf("Unknown error. statusCode=%d", resp.StatusCode())
+	}
+}
+
+// RunTransformation runs a transformation.
+func (c *Client) RunTransformation(file string, level LogLevel) (string, error) {
+	Logger.Debug("RunTrans", zap.String("file", file))
+	if strings.HasSuffix(file, ".ktr") {
+		file = file[0 : len(file)-4]
+	}
+	resp, err := c.client.R().
+		SetFormData(map[string]string{
+			"trans": file,
+			"level": string(level),
+		}).
+		SetHeader("Accept", "*/*").
+		Post("kettle/runTrans/")
+	switch resp.StatusCode() {
+	case 200:
+		var result WebResult
+		xml.Unmarshal(resp.Body(), &result)
+		if result.Result != "OK" {
+			return "", errors.New(result.Message)
+		}
+		return result.ID, nil
+	case 500:
+		return "", errors.New("server error")
+	default:
+		if err != nil {
+			return "", err
+		}
+		return "", fmt.Errorf("Unknown error. statusCode=%d", resp.StatusCode())
+	}
+}
+
+type WebResult struct {
+	Result  string `xml:"result"`
+	Message string `xml:"message"`
+	ID      string `xml:"id"`
 }
 
 // GetJobInfo gets the job info.

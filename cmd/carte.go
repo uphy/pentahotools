@@ -5,6 +5,8 @@ import (
 	"os"
 	"regexp"
 
+	"time"
+
 	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -89,15 +91,21 @@ func init() {
 			if len(args) != 1 {
 				return errors.New("specify a job")
 			}
-			jobID, err := Client.RunJob(args[0])
+			jobID, err := Client.Run(args[0], client.LogLevels.Debug)
 			if err != nil {
 				return errors.Wrap(err, "job execution failure")
 			}
-			job, err := Client.GetJobInfo(jobID)
+			status, err := Client.GetStatus(jobID, "")
 			if err != nil {
-				return errors.Wrap(err, "getting job info failed")
+				return errors.Wrap(err, "getting status failure")
 			}
-			fmt.Println(job)
+			for {
+				status.Print(client.NewIndentWriter(os.Stdout))
+				if status.IsFinished() {
+					break
+				}
+				time.Sleep(time.Second)
+			}
 			return nil
 		},
 	})
@@ -129,17 +137,18 @@ func init() {
 				}
 				var err error
 				if isJobId(args[0]) {
-					err = Client.RemoveJob(args[0], "")
+					err = Client.RemoveJobOrTransformation(args[0], "")
 				} else {
-					err = Client.RemoveJob("", args[0])
+					err = Client.RemoveJobOrTransformation("", args[0])
 				}
 				if err != nil {
-					return errors.Wrap(err, "job removal failure")
+					return errors.Wrap(err, "job/transformation removal failure")
 				}
 			}
 			return nil
 		},
 	}
 	removeCmd.Flags().BoolP("all", "a", false, "Remove all finished job/transformations.")
+	removeCmd.Aliases = []string{"rm"}
 	carteCmd.AddCommand(removeCmd)
 }

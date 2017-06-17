@@ -116,12 +116,14 @@ func init() {
 
 	fileTreeCmd.Flags().BoolP("showHidden", "s", false, "Show hidden files")
 	fileTreeCmd.Flags().IntP("depth", "d", 1, "The depth of the tree")
+	fileTreeCmd.Aliases = []string{"ls"}
 	fileCmd.AddCommand(fileTreeCmd)
 
 	fileCmd.AddCommand(fileBackupCmd)
 	fileCmd.AddCommand(filePutCmd)
 	fileCmd.AddCommand(fileGetCmd)
 	fileDeleteFileCmd.Flags().BoolP("permanent", "P", false, "Delete file permanently.")
+	fileDeleteFileCmd.Aliases = []string{"rm"}
 	fileCmd.AddCommand(fileDeleteFileCmd)
 
 	fileRestoreCmd.Flags().BoolVarP(&overwrite, "overwrite", "o", false, "If kept at the default of true, overwrites any value found on the system with the matching value that is being imported. ")

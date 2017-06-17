@@ -8,6 +8,7 @@ import (
 // Status represents a status of carte job or transformations.
 type Status interface {
 	Print(w *IndentWriter)
+	IsFinished() bool
 }
 
 // StepStatus represents the status of steps.
@@ -104,6 +105,11 @@ type BaseStatus struct {
 	LastLogLineNr     int    `xml:"last_log_line_nr"`
 	Result            Result `xml:"result"`
 	LoggingString     string `xml:"logging_string"`
+}
+
+// IsFinished check if the job has finished.
+func (s *BaseStatus) IsFinished() bool {
+	return s.StatusDescription == "Finished"
 }
 
 // ParseLogDate parses log
