@@ -132,6 +132,8 @@ func (s *BaseStatus) print(writer *IndentWriter, name string) {
 
 	writer.Println("Log:")
 	writer.IncrementLevel()
+	writer.Printf("First Line : %d\n", s.FirstLogLineNr)
+	writer.Printf("Last Line  : %d\n", s.LastLogLineNr)
 	writer.PrintMultiline(s.LoggingString)
 	writer.DecrementLevel()
 }

@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"regexp"
 
 	"time"
 
@@ -12,11 +11,6 @@ import (
 	"github.com/spf13/cobra"
 	client "github.com/uphy/pentahotools/client"
 )
-
-func isJobId(name string) bool {
-	matched, _ := regexp.Match(`[a-f0-9]{8}\-[a-f0-9]{4}\-[a-f0-9]{4}\-[a-f0-9]{4}\-[a-f0-9]{12}`, []byte(name))
-	return matched
-}
 
 func init() {
 	var carteCmd = &cobra.Command{
@@ -72,11 +66,8 @@ func init() {
 			// Show transformation status
 			var status client.Status
 			var err error
-			if isJobId(args[0]) {
-				status, err = Client.GetStatus(args[0], "")
-			} else {
-				status, err = Client.GetStatus("", args[0])
-			}
+			id, name := client.ParseIDAndName(args[0])
+			status, err = Client.GetStatus(id, name, 0)
 			if err != nil {
 				return err
 			}
@@ -95,7 +86,7 @@ func init() {
 			if err != nil {
 				return errors.Wrap(err, "job execution failure")
 			}
-			status, err := Client.GetStatus(jobID, "")
+			status, err := Client.GetStatus(jobID, "", 0)
 			if err != nil {
 				return errors.Wrap(err, "getting status failure")
 			}
@@ -120,13 +111,13 @@ func init() {
 					return errors.Wrap(err, "getting job list failure")
 				}
 				for _, job := range status.JobStatusList.List {
-					err = Client.RemoveJob(job.ID, job.Name)
+					err = Client.JobClient.Remove(job.ID, job.Name)
 					if err != nil {
 						return errors.Wrap(err, "job removal failure")
 					}
 				}
 				for _, trans := range status.TransformationStatusList.List {
-					err = Client.RemoveTransformation(trans.ID, trans.Name)
+					err = Client.TransformationClient.Remove(trans.ID, trans.Name)
 					if err != nil {
 						return errors.Wrap(err, "transformation removal failure")
 					}
@@ -136,11 +127,8 @@ func init() {
 					return errors.New("specify a job or transformation")
 				}
 				var err error
-				if isJobId(args[0]) {
-					err = Client.RemoveJobOrTransformation(args[0], "")
-				} else {
-					err = Client.RemoveJobOrTransformation("", args[0])
-				}
+				id, name := client.ParseIDAndName(args[0])
+				err = Client.RemoveJobOrTransformation(id, name)
 				if err != nil {
 					return errors.Wrap(err, "job/transformation removal failure")
 				}

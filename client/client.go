@@ -20,10 +20,12 @@ func init() {
 
 // Client is the client class for pentaho.
 type Client struct {
-	url      string
-	User     string
-	Password string
-	client   *resty.Client
+	url                  string
+	User                 string
+	Password             string
+	client               *resty.Client
+	JobClient            CarteClient
+	TransformationClient CarteClient
 }
 
 // NewClient create new instance of Client.
@@ -38,6 +40,8 @@ func NewClient(url string, user string, password string) Client {
 		SetHostURL(url).
 		SetBasicAuth(user, password).
 		SetDisableWarn(true)
+	client.JobClient = &JobClient{client.client}
+	client.TransformationClient = &TransformationClient{client.client}
 	return client
 }
 
