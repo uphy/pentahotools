@@ -126,4 +126,19 @@ func init() {
 
 	fileRestoreCmd.Flags().BoolVarP(&overwrite, "overwrite", "o", false, "If kept at the default of true, overwrites any value found on the system with the matching value that is being imported. ")
 	fileCmd.AddCommand(fileRestoreCmd)
+
+	fileCmd.AddCommand(&cobra.Command{
+		Use:   "create-directory",
+		Short: "Create a new directory.",
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) != 1 {
+				return errors.New("specify the directory path")
+			}
+			return nil
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			err := Client.CreateDirectory(args[0])
+			return err
+		},
+	})
 }

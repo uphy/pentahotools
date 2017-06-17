@@ -1,4 +1,4 @@
-package pentahoclient
+package client
 
 import (
 	"fmt"

@@ -1,4 +1,4 @@
-package pentahoclient
+package client
 
 import (
 	"fmt"
@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"go.uber.org/zap"
+
+	"path/filepath"
 
 	"github.com/pkg/errors"
 )
@@ -38,7 +40,7 @@ func (c *Client) Restore(input string, overwrite bool) error {
 	resp, err := c.client.R().
 		SetFile("fileUpload", input).
 		SetFormData(map[string]string{
-			"overwrite": strconv.FormatBool(overwrite),
+			"overwriteFile": strconv.FormatBool(overwrite),
 		}).
 		Post(fmt.Sprintf("api/repo/files/systemRestore"))
 	switch resp.StatusCode() {
@@ -126,8 +128,13 @@ type ACL struct {
 }
 
 // PutFile put the file to the repository.
+// destination should be a absolute file path.
 func (c *Client) PutFile(file string, destination string) error {
 	Logger.Debug("PutFile", zap.String("file", file), zap.String("destination", destination))
+	if strings.HasSuffix(destination, "/") {
+		_, filename := filepath.Split(file)
+		destination = destination + filename
+	}
 	data, err := ioutil.ReadFile(file)
 	if err != nil {
 		return err
@@ -141,6 +148,25 @@ func (c *Client) PutFile(file string, destination string) error {
 		return nil
 	case 403:
 		return errors.New("Failure to create the file due to permissions, file already exists, or invalid path id")
+	case 500:
+		return errors.New("server error")
+	default:
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("Unknown error. statusCode=%d", resp.StatusCode())
+	}
+}
+
+// CreateDirectory creates new directory by the specified path.
+func (c *Client) CreateDirectory(path string) error {
+	resp, err := c.client.R().
+		Put(fmt.Sprintf("api/repo/files/%s/createDir", strings.Replace(path, "/", ":", -1)))
+	switch resp.StatusCode() {
+	case 200:
+		return nil
+	case 409:
+		return errors.New("Path already exists")
 	case 500:
 		return errors.New("server error")
 	default:
