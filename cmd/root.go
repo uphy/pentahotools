@@ -4,12 +4,12 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"os/exec"
 
 	client "github.com/uphy/pentahotools/client"
 
 	"strings"
 
+	"github.com/mattn/go-shellwords"
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -43,23 +43,13 @@ var RootCmd = &cobra.Command{
 			if commandLine == "exit" {
 				break
 			}
-			splitedCommandLine := strings.Split(commandLine, " ")
-			subProcessArgs := append(os.Args, splitedCommandLine...)
-			subProcessCommand := exec.Command(subProcessArgs[0], subProcessArgs[1:]...)
-			stdout, err := subProcessCommand.StdoutPipe()
+			splitedCommandLine, err := shellwords.Parse(commandLine)
 			if err != nil {
 				fmt.Println(err)
 				continue
 			}
-			subProcessCommand.Start()
-
-			scanner := bufio.NewScanner(stdout)
-			for scanner.Scan() {
-				fmt.Print(scanner.Text())
-				fmt.Println()
-			}
-
-			subProcessCommand.Wait()
+			cmd.SetArgs(splitedCommandLine)
+			cmd.Execute()
 		}
 	},
 }
