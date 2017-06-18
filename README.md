@@ -4,3 +4,8 @@
 [![wercker status](https://app.wercker.com/status/b411f16ffe5211a9c3578fb1cf9322e2/s/master "wercker status")](https://app.wercker.com/project/byKey/b411f16ffe5211a9c3578fb1cf9322e2)
 
 A Pentaho API CLI client app written in Go.
+
+# References
+
+https://github.com/pentaho/pentaho-platform/blob/7.1.0.1/extensions/src/main/java/org/pentaho/platform/web/http/api/resources/
+https://github.com/pentaho/pentaho-kettle/tree/7.1.0.1/engine/src/org/pentaho/di/www

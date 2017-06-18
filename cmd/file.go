@@ -2,8 +2,11 @@ package cmd
 
 import (
 	"errors"
+	"fmt"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
+	"github.com/uphy/pentahotools/client"
 )
 
 func init() {
@@ -109,7 +112,7 @@ func init() {
 			return err
 		},
 	})
-	// file cat
+	// file download
 	downloadCmd := &cobra.Command{
 		Use:   "download",
 		Short: "Download the content of the file/folder in the repository.",
@@ -132,10 +135,11 @@ func init() {
 			}
 			withManifest, _ := cmd.Flags().GetBool("manifest")
 			overwrite, _ := cmd.Flags().GetBool("overwrite")
-			err := Client.DownloadFile(repositoryFile, destination, withManifest, overwrite)
+			path, err := Client.DownloadFile(repositoryFile, destination, withManifest, overwrite)
 			if err != nil {
 				return err
 			}
+			fmt.Println("Saved file to " + path)
 			return nil
 		},
 	}
@@ -143,6 +147,37 @@ func init() {
 	downloadCmd.Flags().BoolP("overwrite", "o", false, "overwrite if exist")
 	downloadCmd.Flags().BoolP("manifest", "m", false, "with manifest")
 	fileCmd.AddCommand(downloadCmd)
+
+	// file import
+	importCmd := &cobra.Command{
+		Use:   "import",
+		Short: "Attempts to import all files from the zip archive or single file.  A log file is produced at the end of import.",
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) != 2 {
+				return errors.New("specify a upload file path and destination repository path")
+			}
+			return nil
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			_, filename := filepath.Split(args[0])
+			err := Client.ImportFile(args[0], args[1], &client.ImportParameters{
+				OverwriteFile:           true,
+				LogLevel:                "ERROR",
+				FileNameOverride:        filename,
+				RetainOwnership:         true,
+				OverwriteACLPermissions: false,
+				ApplyACLPermissions:     false,
+				Charset:                 "",
+			})
+			if err != nil {
+				return err
+			}
+			return nil
+		},
+	}
+	//importCmd.Flags().BoolP("overwrite", "o", false, "overwrite if exist")
+	//importCmd.Flags().StringP("loglevel", "L", string(client.LogLevels.Basic), "log level")
+	fileCmd.AddCommand(importCmd)
 
 	// file delete
 	var deleteCmd = &cobra.Command{

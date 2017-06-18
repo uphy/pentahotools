@@ -231,18 +231,18 @@ func (c *Client) getFile(repositoryPath string, destination string) ([]byte, err
 }
 
 // DownloadFile gets file from the repository
-func (c *Client) DownloadFile(repositoryPath string, destination string, withManifest bool, overwrite bool) error {
+func (c *Client) DownloadFile(repositoryPath string, destination string, withManifest bool, overwrite bool) (string, error) {
 	Logger.Debug("DownloadFile", zap.String("repositoryPath", repositoryPath), zap.String("destination", destination), zap.Bool("withManifest", withManifest), zap.Bool("overwrite", overwrite))
 	var existsAndIsFile = func(f string) bool {
 		s, err := os.Stat(f)
 		return err == nil && s.IsDir() == false
 	}
 	if existsAndIsFile(destination) && !overwrite {
-		return errors.New("destination file already exist")
+		return "", errors.New("destination file already exist")
 	}
 	file, err := ioutil.TempFile("", "download")
 	if err != nil {
-		return errors.Wrap(err, "create temp file failed")
+		return "", errors.Wrap(err, "create temp file failed")
 	}
 	defer file.Close()
 	tmpDestination := file.Name()
@@ -271,17 +271,52 @@ func (c *Client) DownloadFile(repositoryPath string, destination string, withMan
 			}
 		}
 		if existsAndIsFile(destination) && !overwrite {
-			return errors.New("destination file already exist")
+			return "", errors.New("destination file already exist")
 		}
 		err = os.Rename(tmpDestination, destination)
 		if err != nil {
-			return errors.Wrap(err, "failed to move the downloaded file to the destination")
+			return "", errors.Wrap(err, "failed to move the downloaded file to the destination")
 		}
-		return nil
+		return destination, nil
 	case 403:
-		return errors.New("Failure to create the file due to permissions, file already exists, or invalid path id")
+		return "", errors.New("Failure to create the file due to permissions, file already exists, or invalid path id")
 	case 404:
-		return errors.New("file not found")
+		return "", errors.New("file not found")
+	case 500:
+		return "", errors.New("server error")
+	default:
+		if err != nil {
+			return "", err
+		}
+		return "", fmt.Errorf("Unknown error. statusCode=%d", resp.StatusCode())
+	}
+}
+
+// ImportFile imports a file to the directory in the repository.
+func (c *Client) ImportFile(file string, importDir string, params *ImportParameters) error {
+	Logger.Debug("ImportFile", zap.String("file", file), zap.String("importDir", importDir), zap.String("params", fmt.Sprint(params)))
+	_, filename := filepath.Split(file)
+	resp, err := c.client.R().
+		SetFiles(map[string]string{
+			"fileUpload": filename,
+		}).
+		SetMultiValueFormData(url.Values{
+			"overwriteFile":           []string{strconv.FormatBool(params.OverwriteFile)},
+			"logLevel":                []string{params.LogLevel},
+			"retainOwnership":         []string{strconv.FormatBool(params.RetainOwnership)},
+			"fileNameOverride":        []string{params.FileNameOverride},
+			"importDir":               []string{importDir},
+			"charSet":                 []string{params.Charset},
+			"applyAclPermissions":     []string{strconv.FormatBool(params.ApplyACLPermissions)},
+			"overwriteAclPermissions": []string{strconv.FormatBool(params.OverwriteACLPermissions)},
+		}).
+		Post("api/repo/files/import")
+	if err != nil {
+		return err
+	}
+	switch resp.StatusCode() {
+	case 200:
+		return nil
 	case 500:
 		return errors.New("server error")
 	default:
@@ -373,4 +408,15 @@ func (e *FileEntry) print(level int) {
 	for _, entry := range e.Children {
 		entry.print(level + 1)
 	}
+}
+
+// ImportParameters is the parameters of import API.
+type ImportParameters struct {
+	OverwriteFile           bool
+	OverwriteACLPermissions bool
+	ApplyACLPermissions     bool
+	RetainOwnership         bool
+	Charset                 string
+	LogLevel                string
+	FileNameOverride        string
 }
