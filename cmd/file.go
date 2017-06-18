@@ -109,6 +109,40 @@ func init() {
 			return err
 		},
 	})
+	// file cat
+	downloadCmd := &cobra.Command{
+		Use:   "download",
+		Short: "Download the content of the file/folder in the repository.",
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 0 {
+				return errors.New("specify a repository path and optinally destination path")
+			}
+			if len(args) > 2 {
+				return errors.New("too many arguments")
+			}
+			return nil
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			repositoryFile := args[0]
+			var destination string
+			if len(args) > 1 {
+				destination = args[1]
+			} else {
+				destination = ""
+			}
+			withManifest, _ := cmd.Flags().GetBool("manifest")
+			overwrite, _ := cmd.Flags().GetBool("overwrite")
+			err := Client.DownloadFile(repositoryFile, destination, withManifest, overwrite)
+			if err != nil {
+				return err
+			}
+			return nil
+		},
+	}
+	downloadCmd.Aliases = []string{"dl"}
+	downloadCmd.Flags().BoolP("overwrite", "o", false, "overwrite if exist")
+	downloadCmd.Flags().BoolP("manifest", "m", false, "with manifest")
+	fileCmd.AddCommand(downloadCmd)
 
 	// file delete
 	var deleteCmd = &cobra.Command{

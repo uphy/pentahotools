@@ -10,6 +10,12 @@ import (
 
 	"path/filepath"
 
+	"regexp"
+
+	"net/url"
+
+	"os"
+
 	"github.com/pkg/errors"
 )
 
@@ -179,16 +185,103 @@ func (c *Client) CreateDirectory(path string) error {
 
 // GetFile gets file from the repository
 func (c *Client) GetFile(repositoryPath string, destination string) error {
-	Logger.Debug("GetFile", zap.String("repositoryPath", repositoryPath), zap.String("destination", destination))
-	resp, err := c.client.R().
-		SetOutput(destination).
-		Get(fmt.Sprintf("api/repo/files/%s", strings.Replace(repositoryPath, "/", ":", -1)))
+	if _, err := c.getFile(repositoryPath, destination); err != nil {
+		return err
+	}
+	return nil
+}
+
+// GetFileContent gets the content of the file in the repository
+func (c *Client) GetFileContent(repositoryPath string) ([]byte, error) {
+	data, err := c.getFile(repositoryPath, "")
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
+// getFile gets file from the repository
+func (c *Client) getFile(repositoryPath string, destination string) ([]byte, error) {
+	Logger.Debug("getFile", zap.String("repositoryPath", repositoryPath), zap.String("destination", destination))
+	isCatMode := destination == ""
+	req := c.client.R()
+	if !isCatMode {
+		req.SetOutput(destination)
+	}
+	resp, err := req.Get(fmt.Sprintf("api/repo/files/%s", strings.Replace(repositoryPath, "/", ":", -1)))
 
 	switch resp.StatusCode() {
 	case 200:
+		if isCatMode {
+			return resp.Body(), nil
+		}
+		return nil, nil
+	case 403:
+		return nil, errors.New("Failure to create the file due to permissions, file already exists, or invalid path id")
+	case 404:
+		return nil, errors.New("file not found")
+	case 500:
+		return nil, errors.New("server error")
+	default:
+		if err != nil {
+			return nil, err
+		}
+		return nil, fmt.Errorf("Unknown error. statusCode=%d", resp.StatusCode())
+	}
+}
+
+// DownloadFile gets file from the repository
+func (c *Client) DownloadFile(repositoryPath string, destination string, withManifest bool, overwrite bool) error {
+	Logger.Debug("DownloadFile", zap.String("repositoryPath", repositoryPath), zap.String("destination", destination), zap.Bool("withManifest", withManifest), zap.Bool("overwrite", overwrite))
+	var existsAndIsFile = func(f string) bool {
+		s, err := os.Stat(f)
+		return err == nil && s.IsDir() == false
+	}
+	if existsAndIsFile(destination) && !overwrite {
+		return errors.New("destination file already exist")
+	}
+	file, err := ioutil.TempFile("", "download")
+	if err != nil {
+		return errors.Wrap(err, "create temp file failed")
+	}
+	defer file.Close()
+	tmpDestination := file.Name()
+	defer os.Remove(tmpDestination)
+	resp, err := c.client.R().
+		SetOutput(tmpDestination).
+		SetHeader("User-Agent", "Firefox").
+		SetQueryParam("withManifest", strconv.FormatBool(withManifest)).
+		Get(fmt.Sprintf("api/repo/files/%s/download", strings.Replace(repositoryPath, "/", ":", -1)))
+	switch resp.StatusCode() {
+	case 200:
+		stat, err := os.Stat(destination)
+		if destination == "" || (os.IsExist(err) && stat.IsDir()) {
+			contentDisposition := resp.Header().Get("Content-Disposition")
+			pattern, _ := regexp.Compile(`attachment; filename\*=UTF-8''(.*)`)
+			encodedFilename := pattern.FindStringSubmatch(contentDisposition)[1]
+			filename, _ := url.PathUnescape(encodedFilename)
+			if strings.HasSuffix(destination, "/") {
+				destination = destination + filename
+			} else {
+				if len(destination) == 0 {
+					destination = "./" + filename
+				} else {
+					destination = destination + "/" + filename
+				}
+			}
+		}
+		if existsAndIsFile(destination) && !overwrite {
+			return errors.New("destination file already exist")
+		}
+		err = os.Rename(tmpDestination, destination)
+		if err != nil {
+			return errors.Wrap(err, "failed to move the downloaded file to the destination")
+		}
 		return nil
 	case 403:
 		return errors.New("Failure to create the file due to permissions, file already exists, or invalid path id")
+	case 404:
+		return errors.New("file not found")
 	case 500:
 		return errors.New("server error")
 	default:
