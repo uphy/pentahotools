@@ -23,7 +23,7 @@ func init() {
 	}
 	RootCmd.AddCommand(carteCmd)
 
-	carteCmd.AddCommand(&cobra.Command{
+	var statusCmd = &cobra.Command{
 		Use:   "status",
 		Short: "Show status of the carte server.",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -74,7 +74,9 @@ func init() {
 			status.Print(client.NewIndentWriter(os.Stdout))
 			return nil
 		},
-	})
+	}
+	statusCmd.Aliases = []string{"ls"}
+	carteCmd.AddCommand(statusCmd)
 	carteCmd.AddCommand(&cobra.Command{
 		Use:   "run",
 		Short: "Run the specified job or transformation.",

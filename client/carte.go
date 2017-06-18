@@ -2,11 +2,10 @@ package client
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/pkg/errors"
-
-	"go.uber.org/zap"
 )
 
 // GetStatusCarteServer gets the status of the carte server.
@@ -38,8 +37,8 @@ func (c *Client) GetStatusCarteServer() (*CarteServerStatus, error) {
 	}
 }
 
+// GetStatus gets the status of job or transformation.
 func (c *Client) GetStatus(id string, name string, from int) (Status, error) {
-	Logger.Debug("GetStatus", zap.String("id", id), zap.String("name", name), zap.Int("from", from))
 	client, err := c.GetCarteClient(id, name)
 	if err != nil {
 		return nil, err
@@ -47,7 +46,7 @@ func (c *Client) GetStatus(id string, name string, from int) (Status, error) {
 	return client.GetStatus(id, name, from)
 }
 
-// RemoveJobOrTransformation removes job or transformation
+// RemoveJobOrTransformation removes job or transformation.
 func (c *Client) RemoveJobOrTransformation(id, name string) error {
 	client, err := c.GetCarteClient(id, name)
 	if err != nil {
@@ -63,6 +62,27 @@ func (c *Client) Run(file string, level LogLevel) (string, error) {
 	} else if strings.HasSuffix(file, ".ktr") {
 		return c.TransformationClient.Run(file, level)
 	} else {
+		// complements the kjb/ktr extension.
+		if !strings.HasPrefix(file, "/") {
+			file = "/" + file
+		}
+		dir, filename := filepath.Split(file)
+		dirEntry, err := c.Tree(dir, 1, false)
+		if err != nil {
+			return "", err
+		}
+		for _, f := range dirEntry.Children {
+			if strings.HasPrefix(f.File.Name, filename) {
+				switch f.File.Name {
+				case filename + ".kjb":
+					return c.JobClient.Run(file, level)
+				case filename + ".ktr":
+					return c.TransformationClient.Run(file, level)
+				default:
+					continue
+				}
+			}
+		}
 		return "", errors.New("unknown file:" + file)
 	}
 }
