@@ -16,6 +16,10 @@ import (
 
 	"os"
 
+	"encoding/xml"
+
+	"html"
+
 	"github.com/pkg/errors"
 )
 
@@ -181,6 +185,42 @@ func (c *Client) CreateDirectory(path string) error {
 		}
 		return fmt.Errorf("Unknown error. statusCode=%d", resp.StatusCode())
 	}
+}
+
+// ClearCache clears the cache
+func (c *Client) ClearCache(catalog string) error {
+	resp, err := c.client.R().
+		SetFormData(map[string]string{
+			"catalog": catalog,
+		}).
+		Post("api/repos/xanalyzer/service/ajax/clearCache")
+	switch resp.StatusCode() {
+	case 200:
+		var result Message
+		xml.Unmarshal(resp.Body(), &result)
+		detail := html.UnescapeString(result.Details)
+		if strings.Contains(detail, "find") {
+			return errors.New("unable to find catalog: " + catalog)
+		}
+		body := string(resp.Body())
+		if body == "true" {
+			return nil
+		}
+		return errors.New("failed to clear cache")
+	default:
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("Unknown error. statusCode=%d", resp.StatusCode())
+	}
+}
+
+// Message represents the response message object
+type Message struct {
+	ID      string `xml:"id,attr"`
+	Ticket  string `xml:"ticket,attr"`
+	Details string `xml:"details,attr"`
+	Type    string `xml:"type,attr"`
 }
 
 // GetFile gets file from the repository

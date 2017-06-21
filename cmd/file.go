@@ -215,4 +215,15 @@ func init() {
 	}
 	createDirectoryCmd.Aliases = []string{"mkdir"}
 	fileCmd.AddCommand(createDirectoryCmd)
+
+	fileCmd.AddCommand(&cobra.Command{
+		Use:   "clear-cache",
+		Short: "Clear the cache of Analyzer and Mondrian.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) != 1 {
+				return errors.New("specify a catalog name")
+			}
+			return Client.ClearCache(args[0])
+		},
+	})
 }
