@@ -157,23 +157,13 @@ var userroleCreateUserCmd = &cobra.Command{
 	Use:   "create-user",
 	Short: "Create user",
 	PreRunE: func(cmd *cobra.Command, args []string) error {
-		if file != "" {
-			if len(args) > 0 {
-				return errors.New("can not set both option(file) and arguments")
-			}
-		} else if len(args) != 2 {
+		if len(args) != 2 {
 			return errors.New("Specify 2 arguments(username and password)")
 		}
 		return nil
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if file == "" {
-			return Client.CreateUser(args[0], args[1])
-		}
-		bar := pb.StartNew(0)
-		err := CreateUsersInFile(file, bar)
-		bar.FinishPrint("Finished to create the users.")
-		return err
+		return Client.CreateUser(args[0], args[1])
 	},
 }
 
@@ -191,6 +181,23 @@ var userroleDeleteUserCmd = &cobra.Command{
 			err = DeleteUsersInFile(file, homeDir, bar)
 		}
 		bar.FinishPrint("Finished to delete users.")
+		return err
+	},
+}
+
+var userroleImportUsersCmd = &cobra.Command{
+	Use:   "import-users",
+	Short: "Import users.",
+	PreRunE: func(cmd *cobra.Command, args []string) error {
+		if len(args) != 1 {
+			return errors.New("specify a users file(csv/xlsx)")
+		}
+		return nil
+	},
+	RunE: func(cmd *cobra.Command, args []string) error {
+		bar := pb.StartNew(0)
+		err := CreateUsersInFile(args[0], bar)
+		bar.FinishPrint("Finished to create the users.")
 		return err
 	},
 }
@@ -353,6 +360,7 @@ func init() {
 	userroleCmd.AddCommand(userroleDeleteUserCmd)
 
 	userroleCmd.AddCommand(userroleExportUsersCmd)
+	userroleCmd.AddCommand(userroleImportUsersCmd)
 
 	userrolerolesCmd.PersistentFlags().StringVarP(&roleTarget, "target", "t", "all", "Target roles.[all/standard/permission/system/extra]")
 	userroleCmd.AddCommand(userrolerolesCmd)

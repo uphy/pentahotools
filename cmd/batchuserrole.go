@@ -141,8 +141,6 @@ func CreateUsersInFile(file string, bar *pb.ProgressBar) error {
 				if err != nil {
 					client.Logger.Warn("Failed to update password.", zap.String("user", userRow.Name), zap.Error(err))
 				}
-			} else {
-				client.Logger.Warn("UpdatePassword skipped.  Password column doesn't exist or the password is empty.", zap.String("user", userRow.Name))
 			}
 		} else {
 			var p = userRow.Password
@@ -158,6 +156,9 @@ func CreateUsersInFile(file string, bar *pb.ProgressBar) error {
 		// assign roles
 		assigningRoles := []string{}
 		for _, role := range userRow.Roles {
+			if len(role) == 0 {
+				continue
+			}
 			roleLower := strings.ToLower(role)
 			if !allRolesSetLower.Contains(roleLower) {
 				err = Client.CreateRole(role)
