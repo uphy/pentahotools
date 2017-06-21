@@ -136,11 +136,13 @@ func CreateUsersInFile(file string, bar *pb.ProgressBar) error {
 
 		// create user and change password if needed
 		if allUsersSetLower.Contains(strings.ToLower(userRow.Name)) {
-			if len(password) > 0 {
+			if len(userRow.Password) > 0 {
 				err = Client.UpdatePassword(userRow.Name, userRow.Password)
 				if err != nil {
 					client.Logger.Warn("Failed to update password.", zap.String("user", userRow.Name), zap.Error(err))
 				}
+			} else {
+				client.Logger.Warn("UpdatePassword skipped.  Password column doesn't exist or the password is empty.", zap.String("user", userRow.Name))
 			}
 		} else {
 			var p = userRow.Password
@@ -179,6 +181,10 @@ func CreateUsersInFile(file string, bar *pb.ProgressBar) error {
 			roleLowerString := roleLower.(string)
 			if !userRow.RoleSet.Contains(roleLower) && roleLowerString != "authenticated" {
 				roleOriginal := currentRolesMap[roleLowerString]
+				if strings.ToLower(userRow.Name) == "admin" && roleLower == "administrator" {
+					client.Logger.Warn("User 'admin' should be 'administrator'.")
+					continue
+				}
 				removingRoles = append(removingRoles, roleOriginal)
 			}
 		}
