@@ -1,3 +1,6 @@
 /.wercker
 /*.log
 *~
+/*.zip
+/*.csv
+/.vscode
