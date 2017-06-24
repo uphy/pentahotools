@@ -107,15 +107,20 @@ var userroleListPermissionsCmd = &cobra.Command{
 }
 
 var userroleAssignPermissionsCmd = &cobra.Command{
-	Use:   "assign-permissions",
-	Short: "Assign the permissions to the role.",
+	Use:   "set-permissions",
+	Short: "Set the permissions of the role.",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if len(args) < 2 {
+		if len(args) < 1 {
 			return errors.New("specify role name and permissions")
 		}
-		err := Client.AssignPermissionsToRole(args[0], args[1:]...)
+		var err error
+		if len(args) == 1 {
+			err = NewRoleClient(&Client).SetPermissionsOfRole(args[0])
+		} else {
+			err = NewRoleClient(&Client).SetPermissionsOfRole(args[0], args[1:]...)
+		}
 		if err != nil {
-			return errors.Wrap(err, fmt.Sprintf("Failed to assign the permissions to the role. (role=%s, permissions=%s)", args[0], args[1:]))
+			return errors.Wrap(err, fmt.Sprintf("Failed to set the permissions of the role. (role=%s, permissions=%s)", args[0], args[1:]))
 		}
 		return nil
 	},
@@ -174,12 +179,7 @@ var userroleDeleteUserCmd = &cobra.Command{
 		homeDir, _ := cmd.Flags().GetBool("homeDir")
 
 		bar := pb.StartNew(0)
-		var err error
-		if file == "" {
-			err = DeleteUsers(args, homeDir, bar)
-		} else {
-			err = DeleteUsersInFile(file, homeDir, bar)
-		}
+		err := DeleteUsers(args, homeDir, bar)
 		bar.FinishPrint("Finished to delete users.")
 		return err
 	},
@@ -196,7 +196,16 @@ var userroleImportUsersCmd = &cobra.Command{
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		bar := pb.StartNew(0)
-		err := CreateUsersInFile(args[0], bar)
+		deleteUsers, _ := cmd.Flags().GetBool("delete-users")
+		deleteHomeDir, _ := cmd.Flags().GetBool("delete-homedir")
+		updatePassword, _ := cmd.Flags().GetBool("update-password")
+		defaultPassword, _ := cmd.Flags().GetString("default-password")
+		err := ImportUsers(args[0], &ImportUsersOptions{
+			DeleteUsers:         deleteUsers,
+			DeleteHomeDirectory: deleteHomeDir,
+			UpdatePassword:      updatePassword,
+			DefaultPassword:     defaultPassword,
+		}, bar)
 		bar.FinishPrint("Finished to create the users.")
 		return err
 	},
@@ -355,11 +364,14 @@ func init() {
 	userroleCreateUserCmd.PersistentFlags().StringVarP(&file, "file", "f", "", "Batch create from CSV file.")
 	userroleCmd.AddCommand(userroleCreateUserCmd)
 
-	userroleDeleteUserCmd.Flags().StringVarP(&file, "file", "f", "", "Batch delete from CSV file.")
 	userroleDeleteUserCmd.Flags().BoolP("homeDir", "H", false, "Also delete home directory.")
 	userroleCmd.AddCommand(userroleDeleteUserCmd)
 
 	userroleCmd.AddCommand(userroleExportUsersCmd)
+	userroleImportUsersCmd.Flags().BoolP("delete-users", "D", true, "Delete users instead of delete roles for user.")
+	userroleImportUsersCmd.Flags().BoolP("delete-homedir", "H", false, "Delete user home directory.  This option is used when the 'delete-users' option is enabled.")
+	userroleImportUsersCmd.Flags().BoolP("update-password", "P", false, "Update user password.")
+	userroleImportUsersCmd.Flags().StringP("default-password", "d", "", "Set the default password.  This option is used when the 'update-password' option is enabled.")
 	userroleCmd.AddCommand(userroleImportUsersCmd)
 
 	userrolerolesCmd.PersistentFlags().StringVarP(&roleTarget, "target", "t", "all", "Target roles.[all/standard/permission/system/extra]")

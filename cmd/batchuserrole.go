@@ -99,8 +99,8 @@ func DeleteUsers(users []string, deleteHomeDirectory bool, bar *pb.ProgressBar) 
 	return nil
 }
 
-// CreateUsersInFile registers users from a file
-func CreateUsersInFile(file string, bar *pb.ProgressBar) error {
+// ImportUsers registers users from a file
+func ImportUsers(file string, options *ImportUsersOptions, bar *pb.ProgressBar) error {
 	// getting user names from the repository
 	allUsersSetLower, err := listExistingUsers()
 	if err != nil {
@@ -135,19 +135,23 @@ func CreateUsersInFile(file string, bar *pb.ProgressBar) error {
 		}
 
 		// create user and change password if needed
+		password := userRow.Password
+		if len(password) == 0 {
+			if len(options.DefaultPassword) > 0 {
+				password = options.DefaultPassword
+			} else {
+				password = Client.Password
+			}
+		}
 		if allUsersSetLower.Contains(strings.ToLower(userRow.Name)) {
-			if len(userRow.Password) > 0 {
-				err = Client.UpdatePassword(userRow.Name, userRow.Password)
+			if options.UpdatePassword {
+				err = Client.UpdatePassword(userRow.Name, password)
 				if err != nil {
 					client.Logger.Warn("Failed to update password.", zap.String("user", userRow.Name), zap.Error(err))
 				}
 			}
 		} else {
-			var p = userRow.Password
-			if len(p) == 0 {
-				p = Client.Password
-			}
-			err = Client.CreateUser(userRow.Name, p)
+			err = Client.CreateUser(userRow.Name, password)
 			if err != nil {
 				client.Logger.Warn("Failed to create user.", zap.String("user", userRow.Name), zap.Error(err))
 			}
@@ -201,34 +205,50 @@ func CreateUsersInFile(file string, bar *pb.ProgressBar) error {
 	// Delete users not in the input file
 	usersNotInFileLower.Remove("admin")
 	if usersNotInFileLower.Cardinality() > 0 {
-		bar.Total += int64(usersNotInFileLower.Cardinality())
-		for _, user := range usersNotInFileLower.ToSlice() {
-			userString := user.(string)
-			bar.Prefix("Remove roles: " + userString)
-			rolesSetLower, roleMap, err := listRolesForUser(userString)
-			if err != nil {
-				client.Logger.Warn("Failed to list the roles of the user which doesn't exist in the input file.", zap.String("user", userString), zap.String("file", file))
-				bar.Increment()
-				continue
+		if options.DeleteUsers {
+			deletingUsers := make([]string, usersNotInFileLower.Cardinality())
+			for i, u := range usersNotInFileLower.ToSlice() {
+				deletingUsers[i] = u.(string)
 			}
-			var filteredRoles []string
-			for _, role := range rolesSetLower.ToSlice() {
-				if role == "authenticated" {
+			DeleteUsers(deletingUsers, options.DeleteHomeDirectory, bar)
+		} else {
+			bar.Total += int64(usersNotInFileLower.Cardinality())
+			for _, user := range usersNotInFileLower.ToSlice() {
+				userString := user.(string)
+
+				bar.Prefix("Remove roles: " + userString)
+				rolesSetLower, roleMap, err := listRolesForUser(userString)
+				if err != nil {
+					client.Logger.Warn("Failed to list the roles of the user which doesn't exist in the input file.", zap.String("user", userString), zap.String("file", file))
+					bar.Increment()
 					continue
 				}
-				filteredRoles = append(filteredRoles, roleMap[role.(string)])
-			}
-			fmt.Println(filteredRoles)
-			err = Client.RemoveRolesFromUser(userString, filteredRoles...)
-			if err != nil {
-				client.Logger.Warn("Failed to remove roles of the user which doesn't exist in the input file.", zap.String("user", userString), zap.String("roles", rolesSetLower.String()), zap.String("file", file))
+				var filteredRoles []string
+				for _, role := range rolesSetLower.ToSlice() {
+					if role == "authenticated" {
+						continue
+					}
+					filteredRoles = append(filteredRoles, roleMap[role.(string)])
+				}
+				err = Client.RemoveRolesFromUser(userString, filteredRoles...)
+				if err != nil {
+					client.Logger.Warn("Failed to remove roles of the user which doesn't exist in the input file.", zap.String("user", userString), zap.String("roles", rolesSetLower.String()), zap.String("file", file))
+					bar.Increment()
+					continue
+				}
 				bar.Increment()
-				continue
 			}
-			bar.Increment()
 		}
 	}
 	return nil
+}
+
+// ImportUsersOptions represents the options for ImportUsers func.
+type ImportUsersOptions struct {
+	DeleteUsers         bool
+	DeleteHomeDirectory bool
+	UpdatePassword      bool
+	DefaultPassword     string
 }
 
 func listRolesForUser(userName string) (mapset.Set, map[string]string, error) {

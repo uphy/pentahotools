@@ -112,6 +112,10 @@ func (c *RoleClient) getPermissionFromName(name string) *Permission {
 func (c *RoleClient) newRole(assignment pentahoclient.Assignment) *Role {
 	var permissions []Permission
 	for _, logicalName := range assignment.LogicalRoles {
+		permission := c.getPermissionFromLogicalName(logicalName)
+		if permission == nil {
+			pentahoclient.Logger.Warn("no such permission: " + logicalName)
+		}
 		permissions = append(permissions, *c.getPermissionFromLogicalName(logicalName))
 	}
 	return &Role{
@@ -121,6 +125,7 @@ func (c *RoleClient) newRole(assignment pentahoclient.Assignment) *Role {
 	}
 }
 
+// FindAllRoles finds all of the roles.
 func (c *RoleClient) FindAllRoles() (*[]Role, error) {
 	sytemRolesMap, err := c.client.ListPermissionsForRoles()
 	if err != nil {
@@ -133,6 +138,7 @@ func (c *RoleClient) FindAllRoles() (*[]Role, error) {
 	return &roles, nil
 }
 
+// FindRole finds the specified role.
 func (c *RoleClient) FindRole(role string) (*Role, error) {
 	sytemRolesMap, err := c.client.ListPermissionsForRoles()
 	if err != nil {
@@ -144,6 +150,19 @@ func (c *RoleClient) FindRole(role string) (*Role, error) {
 		}
 	}
 	return nil, nil
+}
+
+// SetPermissionsOfRole set the permissions of the role.
+func (c *RoleClient) SetPermissionsOfRole(role string, permissions ...string) error {
+	var permissionNames []string
+	for _, name := range permissions {
+		p := c.getPermissionFromName(name)
+		if p == nil {
+			return c.unknownPermissionError(name)
+		}
+		permissionNames = append(permissionNames, p.logicalName)
+	}
+	return c.client.AssignPermissionsToRole(role, permissionNames...)
 }
 
 // AddPermissionsToRole add permissions to a role
@@ -174,11 +193,17 @@ func (c *RoleClient) addOrRemovePermissionsFromRole(add bool, role string, permi
 	for _, p := range permissions {
 		p2 := c.getPermissionFromName(p)
 		if p2 == nil {
-			return fmt.Errorf("unknown permission %s.  specify %s", p, c.getAvailablePermissionNames())
+			return c.unknownPermissionError(p)
 		}
 		if add {
+			if s.Contains(p2.logicalName) {
+				return fmt.Errorf("'%s' already have the permission '%s'", role, p2.name)
+			}
 			s.Add(p2.logicalName)
 		} else {
+			if !s.Contains(p2.logicalName) {
+				return fmt.Errorf("'%s' doesn't have the permission '%s'", role, p2.name)
+			}
 			s.Remove(p2.logicalName)
 		}
 	}
@@ -187,4 +212,8 @@ func (c *RoleClient) addOrRemovePermissionsFromRole(add bool, role string, permi
 		logicalPermissions = append(logicalPermissions, logicalPerission.(string))
 	}
 	return c.client.AssignPermissionsToRole(role, logicalPermissions...)
+}
+
+func (c *RoleClient) unknownPermissionError(name string) error {
+	return fmt.Errorf("unknown permission %s.  specify %s", name, c.getAvailablePermissionNames())
 }
