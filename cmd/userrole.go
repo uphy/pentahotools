@@ -200,11 +200,13 @@ var userroleImportUsersCmd = &cobra.Command{
 		deleteHomeDir, _ := cmd.Flags().GetBool("delete-homedir")
 		updatePassword, _ := cmd.Flags().GetBool("update-password")
 		defaultPassword, _ := cmd.Flags().GetString("default-password")
+		headerSize, _ := cmd.Flags().GetInt("header-size")
 		err := ImportUsers(args[0], &ImportUsersOptions{
 			DeleteUsers:         deleteUsers,
 			DeleteHomeDirectory: deleteHomeDir,
 			UpdatePassword:      updatePassword,
 			DefaultPassword:     defaultPassword,
+			HeaderSize:          headerSize,
 		}, bar)
 		bar.FinishPrint("Finished to create the users.")
 		return err
@@ -224,8 +226,9 @@ var userroleExportUsersCmd = &cobra.Command{
 		default:
 			return errors.New("specify a file")
 		}
+		headers, _ := cmd.Flags().GetBool("headers")
 		bar := pb.StartNew(0)
-		err := ExportUsers(file, bar)
+		err := ExportUsers(file, headers, bar)
 		bar.FinishPrint("Finished to export users.")
 		return err
 	},
@@ -367,11 +370,13 @@ func init() {
 	userroleDeleteUserCmd.Flags().BoolP("homeDir", "H", false, "Also delete home directory.")
 	userroleCmd.AddCommand(userroleDeleteUserCmd)
 
+	userroleExportUsersCmd.Flags().BoolP("headers", "e", false, "Print headers.")
 	userroleCmd.AddCommand(userroleExportUsersCmd)
 	userroleImportUsersCmd.Flags().BoolP("delete-users", "D", true, "Delete users instead of delete roles for user.")
 	userroleImportUsersCmd.Flags().BoolP("delete-homedir", "H", false, "Delete user home directory.  This option is used when the 'delete-users' option is enabled.")
 	userroleImportUsersCmd.Flags().BoolP("update-password", "P", false, "Update user password.")
 	userroleImportUsersCmd.Flags().StringP("default-password", "d", "", "Set the default password.  This option is used when the 'update-password' option is enabled.")
+	userroleImportUsersCmd.Flags().IntP("header-size", "e", 0, "Set the header size.")
 	userroleCmd.AddCommand(userroleImportUsersCmd)
 
 	userrolerolesCmd.PersistentFlags().StringVarP(&roleTarget, "target", "t", "all", "Target roles.[all/standard/permission/system/extra]")

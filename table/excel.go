@@ -20,7 +20,7 @@ func newExcelTableReader(file string) (Reader, error) {
 	}
 	excelTable := excelTable{
 		sheet: xlsxFile.Sheets[0],
-		row:   1, // Header consumes 1 row
+		row:   0,
 	}
 	return &excelTable, nil
 }

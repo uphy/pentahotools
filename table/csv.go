@@ -21,12 +21,6 @@ func newCsvTableReader(file string) (Reader, error) {
 	}
 	reader := csv.NewReader(transform.NewReader(f, japanese.ShiftJIS.NewDecoder()))
 	reader.LazyQuotes = true
-	// skip header row
-	_, err = reader.Read()
-	if err != nil {
-		return nil, err
-	}
-
 	return &csvTableReader{
 		file:   f,
 		reader: reader,

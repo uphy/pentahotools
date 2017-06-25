@@ -15,7 +15,7 @@ import (
 )
 
 // ExportUsers exports user list to the file.
-func ExportUsers(file string, bar *pb.ProgressBar) error {
+func ExportUsers(file string, withHeader bool, bar *pb.ProgressBar) error {
 	bar.Prefix("List users")
 	users, err := Client.ListUsers()
 	if err != nil {
@@ -28,7 +28,9 @@ func ExportUsers(file string, bar *pb.ProgressBar) error {
 		return err
 	}
 	defer writer.Close()
-	writer.WriteHeader(&[]string{"User", "Roles"})
+	if withHeader {
+		writer.WriteHeader(&[]string{"User", "Roles"})
+	}
 	for _, user := range *users {
 		bar.Prefix("Roles for " + user)
 		roles, err := Client.ListRolesForUser(user)
@@ -51,8 +53,8 @@ func ExportUsers(file string, bar *pb.ProgressBar) error {
 }
 
 // DeleteUsersInFile delete users in file
-func DeleteUsersInFile(file string, deleteHomeDirectory bool, bar *pb.ProgressBar) error {
-	userTable, err := NewUserTable(file)
+func DeleteUsersInFile(file string, deleteHomeDirectory bool, headers int, bar *pb.ProgressBar) error {
+	userTable, err := NewUserTable(file, headers)
 	if err != nil {
 		return errors.Wrap(err, "reading file failed")
 	}
@@ -113,7 +115,7 @@ func ImportUsers(file string, options *ImportUsersOptions, bar *pb.ProgressBar) 
 		return errors.Wrap(err, "failed to get the list of roles")
 	}
 
-	userTable, err := NewUserTable(file)
+	userTable, err := NewUserTable(file, options.HeaderSize)
 	if err != nil {
 		return errors.Wrap(err, "reading file failed")
 	}
@@ -249,6 +251,7 @@ type ImportUsersOptions struct {
 	DeleteHomeDirectory bool
 	UpdatePassword      bool
 	DefaultPassword     string
+	HeaderSize          int
 }
 
 func listRolesForUser(userName string) (mapset.Set, map[string]string, error) {
@@ -290,7 +293,7 @@ func stringArrayToSetIgnoreCase(array *[]string, lowerToOriginalMap map[string]s
 }
 
 // NewUserTable read UserTable from a file.
-func NewUserTable(file string) (*UserTable, error) {
+func NewUserTable(file string, headers int) (*UserTable, error) {
 	var row []string
 	row = make([]string, 3) // 3 columns; username, role, password
 
@@ -314,6 +317,10 @@ func NewUserTable(file string) (*UserTable, error) {
 	table, err := table.NewReader(file)
 	if err != nil {
 		return nil, err
+	}
+	// skip headers
+	for i := 0; i < headers; i++ {
+		table.ReadRow(&row)
 	}
 	return &UserTable{table, row, count}, nil
 }
