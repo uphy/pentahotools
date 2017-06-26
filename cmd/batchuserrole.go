@@ -130,10 +130,17 @@ func ImportUsers(file string, options *ImportUsersOptions, bar *pb.ProgressBar) 
 		bar.Prefix("User: " + userRow.Name)
 		usersNotInFileLower.Remove(strings.ToLower(userRow.Name))
 
-		currentRolesLower, currentRolesMap, err := listRolesForUser(userRow.Name)
-		if err != nil {
-			client.Logger.Warn("Failed to list roles for user.", zap.String("user", userRow.Name), zap.Error(err))
-			continue
+		var currentRolesLower mapset.Set
+		var currentRolesMap map[string]string
+		if allUsersSetLower.Contains(strings.ToLower(userRow.Name)) {
+			currentRolesLower, currentRolesMap, err = listRolesForUser(userRow.Name)
+			if err != nil {
+				client.Logger.Warn("Failed to list roles for user.", zap.String("user", userRow.Name), zap.Error(err))
+				continue
+			}
+		} else {
+			currentRolesLower = mapset.NewSet()
+			currentRolesMap = map[string]string{}
 		}
 
 		// create user and change password if needed
