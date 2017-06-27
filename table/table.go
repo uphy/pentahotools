@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -12,20 +13,38 @@ const (
 	ConsoleOutput = "<console>"
 )
 
+const (
+	CommonHeaderSize = iota
+	CsvSeparator
+)
+
 // NewReader creates new table reader from a file.
-func NewReader(file string) (Reader, error) {
+func NewReader(file string, options map[int]string) (Reader, error) {
+	var reader Reader
+	var err error
 	switch strings.ToLower(filepath.Ext(file)) {
 	case ".xlsx":
-		return newExcelTableReader(file)
+		reader, err = newExcelTableReader(file)
 	case ".csv":
-		return newCsvTableReader(file)
+		separator := options[CsvSeparator]
+		reader, err = newCsvTableReader(file, separator)
 	default:
 		return nil, errors.New("unsupported file: " + file)
 	}
+	if err != nil {
+		headerSize, err := strconv.Atoi(options[CommonHeaderSize])
+		if err != nil {
+			dummy := []string{}
+			for i := 0; i < headerSize; i++ {
+				reader.ReadRow(&dummy)
+			}
+		}
+	}
+	return reader, err
 }
 
 // NewWriter creates new table writer for the file
-func NewWriter(file string) (Writer, error) {
+func NewWriter(file string, options map[int]string) (Writer, error) {
 	if len(file) == 0 || file == ConsoleOutput {
 		return newConsoleTableWriter(), nil
 	}
@@ -33,7 +52,8 @@ func NewWriter(file string) (Writer, error) {
 	case ".xlsx":
 		return newExcelTableWriter(file)
 	case ".csv":
-		return newCsvTableWriter(file)
+		separator := options[CsvSeparator]
+		return newCsvTableWriter(file, separator)
 	}
 	return nil, errors.New("unsupported file: " + file)
 }

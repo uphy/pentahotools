@@ -15,7 +15,7 @@ import (
 )
 
 // ExportUsers exports user list to the file.
-func ExportUsers(file string, withHeader bool, bar *pb.ProgressBar) error {
+func ExportUsers(file string, options *ExportUsersOptions, bar *pb.ProgressBar) error {
 	bar.Prefix("List users")
 	users, err := Client.ListUsers()
 	if err != nil {
@@ -23,12 +23,14 @@ func ExportUsers(file string, withHeader bool, bar *pb.ProgressBar) error {
 	}
 	bar.Total = int64(len(*users))
 
-	writer, err := table.NewWriter(file)
+	writerOptions := map[int]string{}
+	writerOptions[table.CsvSeparator] = options.Separator
+	writer, err := table.NewWriter(file, writerOptions)
 	if err != nil {
 		return err
 	}
 	defer writer.Close()
-	if withHeader {
+	if options.WithHeader {
 		writer.WriteHeader(&[]string{"User", "Roles"})
 	}
 	for _, user := range *users {
@@ -50,28 +52,6 @@ func ExportUsers(file string, withHeader bool, bar *pb.ProgressBar) error {
 		bar.Increment()
 	}
 	return nil
-}
-
-// DeleteUsersInFile delete users in file
-func DeleteUsersInFile(file string, deleteHomeDirectory bool, headers int, bar *pb.ProgressBar) error {
-	userTable, err := NewUserTable(file, headers)
-	if err != nil {
-		return errors.Wrap(err, "reading file failed")
-	}
-	defer userTable.Close()
-	bar.Prefix("Read file")
-	users := []string{}
-	for {
-		userRow := userTable.Read()
-		if userRow == nil {
-			break
-		}
-		users = append(users, userRow.Name)
-	}
-	if deleteHomeDirectory {
-		bar.Total = int64(1 + len(users))
-	}
-	return DeleteUsers(users, deleteHomeDirectory, bar)
 }
 
 // DeleteUsers deletes users
@@ -115,7 +95,10 @@ func ImportUsers(file string, options *ImportUsersOptions, bar *pb.ProgressBar) 
 		return errors.Wrap(err, "failed to get the list of roles")
 	}
 
-	userTable, err := NewUserTable(file, options.HeaderSize)
+	userTableOptions := map[int]string{}
+	userTableOptions[table.CommonHeaderSize] = fmt.Sprint(options.HeaderSize)
+	userTableOptions[table.CsvSeparator] = fmt.Sprint(options.Separator)
+	userTable, err := NewUserTable(file, userTableOptions)
 	if err != nil {
 		return errors.Wrap(err, "reading file failed")
 	}
@@ -252,6 +235,11 @@ func ImportUsers(file string, options *ImportUsersOptions, bar *pb.ProgressBar) 
 	return nil
 }
 
+type ExportUsersOptions struct {
+	Separator  string
+	WithHeader bool
+}
+
 // ImportUsersOptions represents the options for ImportUsers func.
 type ImportUsersOptions struct {
 	DeleteUsers         bool
@@ -259,6 +247,7 @@ type ImportUsersOptions struct {
 	UpdatePassword      bool
 	DefaultPassword     string
 	HeaderSize          int
+	Separator           string
 }
 
 func listRolesForUser(userName string) (mapset.Set, map[string]string, error) {
@@ -300,12 +289,12 @@ func stringArrayToSetIgnoreCase(array *[]string, lowerToOriginalMap map[string]s
 }
 
 // NewUserTable read UserTable from a file.
-func NewUserTable(file string, headers int) (*UserTable, error) {
+func NewUserTable(file string, options map[int]string) (*UserTable, error) {
 	var row []string
 	row = make([]string, 3) // 3 columns; username, role, password
 
 	// scan table
-	tmpTable, err := table.NewReader(file)
+	tmpTable, err := table.NewReader(file, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -321,13 +310,9 @@ func NewUserTable(file string, headers int) (*UserTable, error) {
 	}
 
 	// create table
-	table, err := table.NewReader(file)
+	table, err := table.NewReader(file, options)
 	if err != nil {
 		return nil, err
-	}
-	// skip headers
-	for i := 0; i < headers; i++ {
-		table.ReadRow(&row)
 	}
 	return &UserTable{table, row, count}, nil
 }

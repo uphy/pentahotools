@@ -207,6 +207,7 @@ var userroleImportUsersCmd = &cobra.Command{
 			UpdatePassword:      updatePassword,
 			DefaultPassword:     defaultPassword,
 			HeaderSize:          headerSize,
+			Separator:           "\t",
 		}, bar)
 		bar.FinishPrint("Finished to create the users.")
 		return err
@@ -228,7 +229,10 @@ var userroleExportUsersCmd = &cobra.Command{
 		}
 		headers, _ := cmd.Flags().GetBool("headers")
 		bar := pb.StartNew(0)
-		err := ExportUsers(file, headers, bar)
+		err := ExportUsers(file, &ExportUsersOptions{
+			Separator:  "\t",
+			WithHeader: headers,
+		}, bar)
 		bar.FinishPrint("Finished to export users.")
 		return err
 	},
