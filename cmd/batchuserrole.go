@@ -157,9 +157,14 @@ func ImportUsers(file string, options *ImportUsersOptions, bar *pb.ProgressBar) 
 			}
 			roleLower := strings.ToLower(role)
 			if !allRolesSetLower.Contains(roleLower) {
-				err = Client.CreateRole(role)
-				if err != nil {
-					client.Logger.Warn("Failed to create role.", zap.String("role", role), zap.Error(err))
+				if options.CreateRoles {
+					err = Client.CreateRole(role)
+					if err != nil {
+						client.Logger.Warn("Failed to create role.", zap.String("role", role), zap.Error(err))
+					}
+				} else {
+					client.Logger.Warn("Role doesn't exist.  Skipped.", zap.String("user", user), zap.String("role", role))
+					continue
 				}
 			}
 			if !currentRolesLower.Contains(roleLower) {
@@ -248,6 +253,7 @@ type ImportUsersOptions struct {
 	DefaultPassword     string
 	HeaderSize          int
 	Separator           string
+	CreateRoles         bool
 }
 
 func listRolesForUser(userName string) (mapset.Set, map[string]string, error) {

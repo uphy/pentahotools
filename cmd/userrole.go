@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/pkg/errors"
 
@@ -201,13 +202,17 @@ var userroleImportUsersCmd = &cobra.Command{
 		updatePassword, _ := cmd.Flags().GetBool("update-password")
 		defaultPassword, _ := cmd.Flags().GetString("default-password")
 		headerSize, _ := cmd.Flags().GetInt("header-size")
+		separator, _ := cmd.Flags().GetString("separator")
+		separator = strings.Replace(separator, "\\t", "\t", -1)
+		createRoles, _ := cmd.Flags().GetBool("create-roles")
 		err := ImportUsers(args[0], &ImportUsersOptions{
 			DeleteUsers:         deleteUsers,
 			DeleteHomeDirectory: deleteHomeDir,
 			UpdatePassword:      updatePassword,
 			DefaultPassword:     defaultPassword,
 			HeaderSize:          headerSize,
-			Separator:           "\t",
+			Separator:           separator,
+			CreateRoles:         createRoles,
 		}, bar)
 		bar.FinishPrint("Finished to create the users.")
 		return err
@@ -228,9 +233,11 @@ var userroleExportUsersCmd = &cobra.Command{
 			return errors.New("specify a file")
 		}
 		headers, _ := cmd.Flags().GetBool("headers")
+		separator, _ := cmd.Flags().GetString("separator")
+		separator = strings.Replace(separator, "\\t", "\t", -1)
 		bar := pb.StartNew(0)
 		err := ExportUsers(file, &ExportUsersOptions{
-			Separator:  "\t",
+			Separator:  separator,
 			WithHeader: headers,
 		}, bar)
 		bar.FinishPrint("Finished to export users.")
@@ -375,12 +382,15 @@ func init() {
 	userroleCmd.AddCommand(userroleDeleteUserCmd)
 
 	userroleExportUsersCmd.Flags().BoolP("headers", "e", false, "Print headers.")
+	userroleExportUsersCmd.Flags().StringP("separator", "s", ",", "Set the separator.")
 	userroleCmd.AddCommand(userroleExportUsersCmd)
 	userroleImportUsersCmd.Flags().BoolP("delete-users", "D", true, "Delete users instead of delete roles for user.")
 	userroleImportUsersCmd.Flags().BoolP("delete-homedir", "H", false, "Delete user home directory.  This option is used when the 'delete-users' option is enabled.")
 	userroleImportUsersCmd.Flags().BoolP("update-password", "P", false, "Update user password.")
 	userroleImportUsersCmd.Flags().StringP("default-password", "d", "", "Set the default password.  This option is used when the 'update-password' option is enabled.")
 	userroleImportUsersCmd.Flags().IntP("header-size", "e", 0, "Set the header size.")
+	userroleImportUsersCmd.Flags().StringP("separator", "s", ",", "Set the separator.")
+	userroleImportUsersCmd.Flags().BoolP("create-roles", "r", false, "Create roles when the role doesn't exist.")
 	userroleCmd.AddCommand(userroleImportUsersCmd)
 
 	userrolerolesCmd.PersistentFlags().StringVarP(&roleTarget, "target", "t", "all", "Target roles.[all/standard/permission/system/extra]")
