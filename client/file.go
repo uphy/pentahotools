@@ -10,11 +10,7 @@ import (
 
 	"path/filepath"
 
-	"regexp"
-
 	"net/url"
-
-	"os"
 
 	"encoding/xml"
 
@@ -273,51 +269,20 @@ func (c *Client) getFile(repositoryPath string, destination string) ([]byte, err
 // DownloadFile gets file from the repository
 func (c *Client) DownloadFile(repositoryPath string, destination string, withManifest bool, overwrite bool) (string, error) {
 	Logger.Debug("DownloadFile", zap.String("repositoryPath", repositoryPath), zap.String("destination", destination), zap.Bool("withManifest", withManifest), zap.Bool("overwrite", overwrite))
-	var existsAndIsFile = func(f string) bool {
-		s, err := os.Stat(f)
-		return err == nil && s.IsDir() == false
-	}
-	if existsAndIsFile(destination) && !overwrite {
-		return "", errors.New("destination file already exist")
-	}
-	file, err := ioutil.TempFile("", "download")
+	helper := NewDownloadHelper(destination, overwrite)
+	err := helper.PrepareTemporaryFile()
 	if err != nil {
-		return "", errors.Wrap(err, "create temp file failed")
+		return "", err
 	}
-	defer file.Close()
-	tmpDestination := file.Name()
-	defer os.Remove(tmpDestination)
+	defer helper.Clean()
 	resp, err := c.client.R().
-		SetOutput(tmpDestination).
+		SetOutput(helper.GetTemporaryFilePath()).
 		SetHeader("User-Agent", "Firefox").
 		SetQueryParam("withManifest", strconv.FormatBool(withManifest)).
 		Get(fmt.Sprintf("api/repo/files/%s/download", strings.Replace(repositoryPath, "/", ":", -1)))
 	switch resp.StatusCode() {
 	case 200:
-		stat, err := os.Stat(destination)
-		if destination == "" || (os.IsExist(err) && stat.IsDir()) {
-			contentDisposition := resp.Header().Get("Content-Disposition")
-			pattern, _ := regexp.Compile(`attachment; filename\*=UTF-8''(.*)`)
-			encodedFilename := pattern.FindStringSubmatch(contentDisposition)[1]
-			filename, _ := url.PathUnescape(encodedFilename)
-			if strings.HasSuffix(destination, "/") {
-				destination = destination + filename
-			} else {
-				if len(destination) == 0 {
-					destination = "./" + filename
-				} else {
-					destination = destination + "/" + filename
-				}
-			}
-		}
-		if existsAndIsFile(destination) && !overwrite {
-			return "", errors.New("destination file already exist")
-		}
-		err = os.Rename(tmpDestination, destination)
-		if err != nil {
-			return "", errors.Wrap(err, "failed to move the downloaded file to the destination")
-		}
-		return destination, nil
+		return helper.MoveTemporaryFileToDestination(resp)
 	case 403:
 		return "", errors.New("Failure to create the file due to permissions, file already exists, or invalid path id")
 	case 404:
