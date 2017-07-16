@@ -1,0 +1,19 @@
+package: github.com/uphy/pentahotools
+import:
+- package: github.com/deckarep/golang-set
+- package: github.com/mattn/go-shellwords
+- package: github.com/mitchellh/go-homedir
+- package: github.com/olekukonko/tablewriter
+- package: github.com/pkg/errors
+- package: github.com/spf13/cobra
+- package: github.com/spf13/viper
+- package: github.com/tealeg/xlsx
+- package: go.uber.org/zap
+  subpackages:
+  - zapcore
+- package: golang.org/x/text
+  subpackages:
+  - encoding/japanese
+  - transform
+- package: gopkg.in/cheggaaa/pb.v1
+- package: gopkg.in/resty.v0
