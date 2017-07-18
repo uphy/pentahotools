@@ -14,11 +14,12 @@ import (
 // JobClient is the carte client for Job.
 type JobClient struct {
 	client *resty.Client
+	logger Logger
 }
 
 // GetStatus gets the status of the job.
 func (c *JobClient) GetStatus(id string, name string, from int) (Status, error) {
-	Logger.Debug("GetStatusJob", zap.String("id", id), zap.String("name", name), zap.Int("from", from))
+	c.logger.Debug("GetStatusJob", zap.String("id", id), zap.String("name", name), zap.Int("from", from))
 	if id == "" && name == "" {
 		return nil, errors.New("specify either id or name")
 	}
@@ -54,7 +55,7 @@ func (c *JobClient) GetStatus(id string, name string, from int) (Status, error) 
 
 // Run runs a job
 func (c *JobClient) Run(file string, level LogLevel) (string, error) {
-	Logger.Debug("RunJob", zap.String("file", file))
+	c.logger.Debug("RunJob", zap.String("file", file))
 	if strings.HasSuffix(file, ".kjb") {
 		file = file[0 : len(file)-4]
 	}
@@ -85,7 +86,7 @@ func (c *JobClient) Run(file string, level LogLevel) (string, error) {
 
 // Remove removes job
 func (c *JobClient) Remove(id, name string) error {
-	Logger.Debug("RemoveJob", zap.String("id", id), zap.String("name", name))
+	c.logger.Debug("RemoveJob", zap.String("id", id), zap.String("name", name))
 	req := c.client.R().
 		SetQueryParam("xml", "Y")
 	if id != "" {

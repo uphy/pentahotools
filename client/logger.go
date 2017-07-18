@@ -7,10 +7,22 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-// Logger is a logger for this package
-var Logger *CompositeLogger
+// Logger is the logger of pentahotools.
+type Logger interface {
+	// Debug records the debug logs
+	Debug(msg string, fields ...zapcore.Field)
+	// Warn records the warning logs
+	Warn(msg string, fields ...zapcore.Field)
+	// Error records the error logs
+	Error(msg string, fields ...zapcore.Field) error
+}
 
-func init() {
+// CompositeLogger merges multiple loggers.
+type compositeLogger struct {
+	Logger []zap.Logger
+}
+
+func NewCompositeLogger() Logger {
 	fileConfig := zap.NewDevelopmentConfig()
 	fileConfig.OutputPaths = []string{"./pentahotools.log"}
 	fileConfig.Level.SetLevel(zap.DebugLevel)
@@ -20,38 +32,45 @@ func init() {
 	consoleConfig.Encoding = "console"
 	consoleConfig.EncoderConfig.TimeKey = ""
 	consoleConfig.EncoderConfig.StacktraceKey = ""
+	consoleConfig.EncoderConfig.CallerKey = ""
 	consoleConfig.OutputPaths = []string{"stdout"}
 	consoleConfig.Level.SetLevel(zap.WarnLevel)
 	consoleLogger, _ := consoleConfig.Build()
 
-	Logger = newCompositeLogger(*consoleLogger, *fileLogger)
+	return newCompositeLogger(*consoleLogger, *fileLogger)
 }
 
-// CompositeLogger merges multiple loggers.
-type CompositeLogger struct {
-	Logger []zap.Logger
+func NewConsoleLogger() Logger {
+	consoleConfig := zap.NewDevelopmentConfig()
+	consoleConfig.Encoding = "console"
+	consoleConfig.EncoderConfig.TimeKey = ""
+	consoleConfig.EncoderConfig.StacktraceKey = ""
+	consoleConfig.OutputPaths = []string{"stdout"}
+	consoleConfig.Level.SetLevel(zap.WarnLevel)
+	consoleLogger, _ := consoleConfig.Build()
+	return newCompositeLogger(*consoleLogger)
 }
 
-func newCompositeLogger(logger ...zap.Logger) *CompositeLogger {
-	return &CompositeLogger{logger}
+func newCompositeLogger(logger ...zap.Logger) *compositeLogger {
+	return &compositeLogger{logger}
 }
 
 // Debug records the debug logs
-func (l *CompositeLogger) Debug(msg string, fields ...zapcore.Field) {
+func (l *compositeLogger) Debug(msg string, fields ...zapcore.Field) {
 	for _, logger := range l.Logger {
 		logger.Debug(msg, fields...)
 	}
 }
 
 // Warn records the warning logs
-func (l *CompositeLogger) Warn(msg string, fields ...zapcore.Field) {
+func (l *compositeLogger) Warn(msg string, fields ...zapcore.Field) {
 	for _, logger := range l.Logger {
 		logger.Warn(msg, fields...)
 	}
 }
 
 // Error records the error logs
-func (l *CompositeLogger) Error(msg string, fields ...zapcore.Field) error {
+func (l *compositeLogger) Error(msg string, fields ...zapcore.Field) error {
 	for _, logger := range l.Logger {
 		logger.Error(msg, fields...)
 	}

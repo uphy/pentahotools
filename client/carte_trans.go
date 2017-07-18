@@ -14,11 +14,12 @@ import (
 // TransformationClient is a carte client for transformations.
 type TransformationClient struct {
 	client *resty.Client
+	logger Logger
 }
 
 // GetStatus gets the status of the transformation.
 func (c *TransformationClient) GetStatus(id string, name string, from int) (Status, error) {
-	Logger.Debug("GetStatusTransformation", zap.String("id", id), zap.String("name", name), zap.Int("from", from))
+	c.logger.Debug("GetStatusTransformation", zap.String("id", id), zap.String("name", name), zap.Int("from", from))
 	if id == "" && name == "" {
 		return nil, errors.New("specify either id or name")
 	}
@@ -54,7 +55,7 @@ func (c *TransformationClient) GetStatus(id string, name string, from int) (Stat
 
 // Run runs the transformation.
 func (c *TransformationClient) Run(file string, level LogLevel) (string, error) {
-	Logger.Debug("RunTrans", zap.String("file", file))
+	c.logger.Debug("RunTrans", zap.String("file", file))
 	if strings.HasSuffix(file, ".ktr") {
 		file = file[0 : len(file)-4]
 	}
@@ -85,7 +86,7 @@ func (c *TransformationClient) Run(file string, level LogLevel) (string, error) 
 
 // Remove removes the transformation.
 func (c *TransformationClient) Remove(id, name string) error {
-	Logger.Debug("RemoveTransformation", zap.String("id", id), zap.String("name", name))
+	c.logger.Debug("RemoveTransformation", zap.String("id", id), zap.String("name", name))
 	req := c.client.R().
 		SetQueryParam("xml", "Y")
 	if id != "" {

@@ -7,6 +7,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/spf13/cobra"
+	batch "github.com/uphy/pentahotools/batch"
 	"github.com/uphy/pentahotools/table"
 	"gopkg.in/cheggaaa/pb.v1"
 )
@@ -180,7 +181,7 @@ var userroleDeleteUserCmd = &cobra.Command{
 		homeDir, _ := cmd.Flags().GetBool("homeDir")
 
 		bar := pb.StartNew(0)
-		err := DeleteUsers(args, homeDir, bar)
+		err := batch.DeleteUsers(args, homeDir, bar, &Client, Client.Logger)
 		bar.FinishPrint("Finished to delete users.")
 		return err
 	},
@@ -205,7 +206,10 @@ var userroleImportUsersCmd = &cobra.Command{
 		separator, _ := cmd.Flags().GetString("separator")
 		separator = strings.Replace(separator, "\\t", "\t", -1)
 		createRoles, _ := cmd.Flags().GetBool("create-roles")
-		err := ImportUsers(args[0], &ImportUsersOptions{
+		if defaultPassword == "" {
+			defaultPassword = Client.Password
+		}
+		err := batch.ImportUsers(args[0], &batch.ImportUsersOptions{
 			DeleteUsers:         deleteUsers,
 			DeleteHomeDirectory: deleteHomeDir,
 			UpdatePassword:      updatePassword,
@@ -213,7 +217,7 @@ var userroleImportUsersCmd = &cobra.Command{
 			HeaderSize:          headerSize,
 			Separator:           separator,
 			CreateRoles:         createRoles,
-		}, bar)
+		}, bar, &Client, Client.Logger)
 		bar.FinishPrint("Finished to create the users.")
 		return err
 	},
@@ -236,10 +240,10 @@ var userroleExportUsersCmd = &cobra.Command{
 		separator, _ := cmd.Flags().GetString("separator")
 		separator = strings.Replace(separator, "\\t", "\t", -1)
 		bar := pb.StartNew(0)
-		err := ExportUsers(file, &ExportUsersOptions{
+		err := batch.ExportUsers(file, &batch.ExportUsersOptions{
 			Separator:  separator,
 			WithHeader: headers,
-		}, bar)
+		}, bar, &Client, Client.Logger)
 		bar.FinishPrint("Finished to export users.")
 		return err
 	},

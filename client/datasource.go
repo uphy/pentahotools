@@ -25,7 +25,7 @@ import (
 
 // ListAnalysisDatasources lists the analysis datasources.
 func (c *Client) ListAnalysisDatasources() ([]string, error) {
-	Logger.Debug("ListAnalysisDatasources")
+	c.Logger.Debug("ListAnalysisDatasources")
 	var result DatasourceCatalog
 	resp, err := c.client.R().
 		SetHeader("Accept", "application/json").
@@ -44,7 +44,7 @@ func (c *Client) ListAnalysisDatasources() ([]string, error) {
 
 // ExportAnalysisDatasource exports an analysis datasource.
 func (c *Client) ExportAnalysisDatasource(name string, file string, overwrite bool) (string, error) {
-	Logger.Debug("ExportAnalysisDatasource", zap.String("name", name), zap.String("file", file), zap.Bool("overwrite", overwrite))
+	c.Logger.Debug("ExportAnalysisDatasource", zap.String("name", name), zap.String("file", file), zap.Bool("overwrite", overwrite))
 	helper := NewDownloadHelper(file, overwrite)
 	err := helper.PrepareTemporaryFile()
 	if err != nil {
@@ -70,7 +70,7 @@ func (c *Client) ExportAnalysisDatasource(name string, file string, overwrite bo
 
 // DeleteAnalysisDatasource deletes an analysis datasource.
 func (c *Client) DeleteAnalysisDatasource(name string) error {
-	Logger.Debug("DeleteAnalysisDatasource", zap.String("name", name))
+	c.Logger.Debug("DeleteAnalysisDatasource", zap.String("name", name))
 	resp, err := c.client.R().
 		Delete(fmt.Sprintf("plugin/data-access/api/datasource/analysis/catalog/%s", name))
 	switch resp.StatusCode() {
@@ -103,7 +103,7 @@ func detectAnalysisSchemaName(data *[]byte) (string, error) {
 
 // ImportAnalysisDatasource imports an analysis datasource.
 func (c *Client) ImportAnalysisDatasource(file string, options *ImportAnalysisDatasourceOptions) error {
-	Logger.Debug("ImportAnalysisDatasource", zap.String("file", file), zap.String("options", fmt.Sprint(options)))
+	c.Logger.Debug("ImportAnalysisDatasource", zap.String("file", file), zap.String("options", fmt.Sprint(options)))
 	// detect datasource name from schema file
 	if len(options.DatasourceName) == 0 {
 		data, _ := ioutil.ReadFile(file)
@@ -219,7 +219,7 @@ type DatasourceCatalogItem struct {
 
 // ListJdbcDatasources lists the jdbc datasources.
 func (c *Client) ListJdbcDatasources() ([]string, error) {
-	Logger.Debug("ListJdbcDatasources")
+	c.Logger.Debug("ListJdbcDatasources")
 	var result DatasourceCatalog
 	resp, err := c.client.R().
 		SetHeader("Accept", "application/json").
@@ -238,7 +238,7 @@ func (c *Client) ListJdbcDatasources() ([]string, error) {
 
 // ExportJdbcDatasource exports an analysis datasource.
 func (c *Client) ExportJdbcDatasource(name string, file string, overwrite bool) (string, error) {
-	Logger.Debug("ExportJdbcDatasource", zap.String("name", name), zap.String("file", file), zap.Bool("overwrite", overwrite))
+	c.Logger.Debug("ExportJdbcDatasource", zap.String("name", name), zap.String("file", file), zap.Bool("overwrite", overwrite))
 	helper := NewDownloadHelper(file, overwrite)
 	helper.FilenameFunc = func(resp *resty.Response) string {
 		return fmt.Sprintf("%s.jdbc.json", name)
@@ -267,7 +267,7 @@ func (c *Client) ExportJdbcDatasource(name string, file string, overwrite bool) 
 
 // ImportJdbcDatasource imports a jdbc datasource.
 func (c *Client) ImportJdbcDatasource(file string) error {
-	Logger.Debug("ImportJdbcDatasource", zap.String("file", file))
+	c.Logger.Debug("ImportJdbcDatasource", zap.String("file", file))
 	// read json input file
 	data, err := ioutil.ReadFile(file)
 	if err != nil {
@@ -307,7 +307,7 @@ func (c *Client) ImportJdbcDatasource(file string) error {
 
 // DeleteJdbcDatasource deletes a jdbc datasource.
 func (c *Client) DeleteJdbcDatasource(name string) error {
-	Logger.Debug("DeleteJdbcDatasource", zap.String("name", name))
+	c.Logger.Debug("DeleteJdbcDatasource", zap.String("name", name))
 	resp, err := c.client.R().
 		Delete(fmt.Sprintf("plugin/data-access/api/datasource/jdbc/connection/%s", name))
 	switch resp.StatusCode() {
@@ -327,7 +327,7 @@ func (c *Client) DeleteJdbcDatasource(name string) error {
 
 // ListDswDatasources lists the dsw datasources.
 func (c *Client) ListDswDatasources() ([]string, error) {
-	Logger.Debug("ListDswDatasources")
+	c.Logger.Debug("ListDswDatasources")
 	var result DatasourceCatalog
 	resp, err := c.client.R().
 		SetHeader("Accept", "application/json").
@@ -346,7 +346,7 @@ func (c *Client) ListDswDatasources() ([]string, error) {
 
 // ExportDswDatasource exports a DSW datasource.
 func (c *Client) ExportDswDatasource(name string, file string, overwrite bool) (string, error) {
-	Logger.Debug("ExportDswDatasource", zap.String("name", name), zap.String("file", file), zap.Bool("overwrite", overwrite))
+	c.Logger.Debug("ExportDswDatasource", zap.String("name", name), zap.String("file", file), zap.Bool("overwrite", overwrite))
 	helper := NewDownloadHelper(file, overwrite)
 	err := helper.PrepareTemporaryFile()
 	if err != nil {
@@ -374,7 +374,7 @@ func (c *Client) ExportDswDatasource(name string, file string, overwrite bool) (
 
 // ImportDswDatasource imports the DSW datasource.
 func (c *Client) ImportDswDatasource(file string, overwrite bool, checkConnection bool) error {
-	Logger.Debug("ImportDswDatasource", zap.String("file", file), zap.Bool("overwrite", overwrite), zap.Bool("checkConnection", checkConnection))
+	c.Logger.Debug("ImportDswDatasource", zap.String("file", file), zap.Bool("overwrite", overwrite), zap.Bool("checkConnection", checkConnection))
 
 	// detect the domain ID and extract the XMI file
 	zipReader, err := zip.OpenReader(file)
@@ -442,7 +442,7 @@ func (c *Client) ImportDswDatasource(file string, overwrite bool, checkConnectio
 
 // DeleteDswDatasource deletes a DSW datasource.
 func (c *Client) DeleteDswDatasource(name string) error {
-	Logger.Debug("DeleteDswDatasource", zap.String("name", name))
+	c.Logger.Debug("DeleteDswDatasource", zap.String("name", name))
 	resp, err := c.client.R().
 		Delete(fmt.Sprintf("plugin/data-access/api/datasource/dsw/domain/%s", name))
 	switch resp.StatusCode() {
@@ -460,7 +460,7 @@ func (c *Client) DeleteDswDatasource(name string) error {
 
 // GetACLOfDswDatasource gets the ACL of a DSW datasource.
 func (c *Client) GetACLOfDswDatasource(name string) error {
-	Logger.Debug("GetACLOfDswDatasource", zap.String("name", name))
+	c.Logger.Debug("GetACLOfDswDatasource", zap.String("name", name))
 	resp, err := c.client.R().
 		Get(fmt.Sprintf("plugin/data-access/api/datasource/dsw/%s/acl", name))
 	switch resp.StatusCode() {
@@ -481,13 +481,13 @@ func (c *Client) GetACLOfDswDatasource(name string) error {
 
 // SetACLOfDswDatasource set the ACL of a DSW datasource.
 func (c *Client) SetACLOfDswDatasource(name string) error {
-	Logger.Debug("SetACLOfDswDatasource", zap.String("name", name))
+	c.Logger.Debug("SetACLOfDswDatasource", zap.String("name", name))
 	return errors.New("Not implemented")
 }
 
 // ListMetadataDatasources lists the metadata datasources.
 func (c *Client) ListMetadataDatasources() ([]string, error) {
-	Logger.Debug("ListMetadataDatasources")
+	c.Logger.Debug("ListMetadataDatasources")
 	var result DatasourceCatalog
 	resp, err := c.client.R().
 		SetHeader("Accept", "application/json").
@@ -506,7 +506,7 @@ func (c *Client) ListMetadataDatasources() ([]string, error) {
 
 // ExportMetadataDatasource exports a DSW datasource.
 func (c *Client) ExportMetadataDatasource(name string, file string, overwrite bool) (string, error) {
-	Logger.Debug("ExportMetadataDatasource", zap.String("name", name), zap.String("file", file), zap.Bool("overwrite", overwrite))
+	c.Logger.Debug("ExportMetadataDatasource", zap.String("name", name), zap.String("file", file), zap.Bool("overwrite", overwrite))
 	helper := NewDownloadHelper(file, overwrite)
 	err := helper.PrepareTemporaryFile()
 	if err != nil {
@@ -534,7 +534,7 @@ func (c *Client) ExportMetadataDatasource(name string, file string, overwrite bo
 
 // ImportMetadataDatasource imports the metadata datasource.
 func (c *Client) ImportMetadataDatasource(file string, domainID string, overwrite bool) error {
-	Logger.Debug("ImportMetadataDatasource", zap.String("file", file), zap.String("domainID", domainID), zap.Bool("overwrite", overwrite))
+	c.Logger.Debug("ImportMetadataDatasource", zap.String("file", file), zap.String("domainID", domainID), zap.Bool("overwrite", overwrite))
 
 	if domainID == "" {
 		_, name := filepath.Split(file)
@@ -581,7 +581,7 @@ func (c *Client) ImportMetadataDatasource(file string, domainID string, overwrit
 
 // DeleteMetadataDatasource deletes a DSW datasource.
 func (c *Client) DeleteMetadataDatasource(name string) error {
-	Logger.Debug("DeleteMetadataDatasource", zap.String("name", name))
+	c.Logger.Debug("DeleteMetadataDatasource", zap.String("name", name))
 	resp, err := c.client.R().
 		Delete(fmt.Sprintf("plugin/data-access/api/datasource/metadata/domain/%s", name))
 	switch resp.StatusCode() {
@@ -596,3 +596,30 @@ func (c *Client) DeleteMetadataDatasource(name string) error {
 		return fmt.Errorf("Unknown error. statusCode=%d", resp.StatusCode())
 	}
 }
+
+/*
+func (c *Client) ExportDatasources(file string) error {
+	tempDir, err := ioutil.TempDir("", "exporttemp")
+	if err != nil {
+		return errors.Wrap(err, "failed to create temporary directory")
+	}
+	defer os.RemoveAll(tempDir)
+	f, err := os.Create(file)
+	if err != nil {
+		return errors.Wrap(err, "failed to create file: "+file)
+	}
+	writer := zip.NewWriter(f)
+	defer writer.Close()
+
+	analysisDatasources, err := c.ListAnalysisDatasources()
+	if err != nil {
+		return errors.Wrap(err, "failed to list analysis datasources")
+	}
+	for _, d := range analysisDatasources {
+		filename, err := c.ExportAnalysisDatasource(d, tempDir, true)
+		entryWriter, err := writer.Create(filename)
+		//ioutil.
+	}
+	return nil
+}
+*/

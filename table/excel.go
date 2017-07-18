@@ -32,7 +32,7 @@ func (t *excelTable) ReadRow(row *[]string) bool {
 	excelRow := t.sheet.Rows[t.row]
 	for i := 0; i < len(*row); i++ {
 		if i < len(excelRow.Cells) {
-			(*row)[i], _ = excelRow.Cells[i].String()
+			(*row)[i] = excelRow.Cells[i].String()
 		} else {
 			(*row)[i] = ""
 		}

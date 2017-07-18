@@ -10,7 +10,7 @@ import (
 
 // GetStatusCarteServer gets the status of the carte server.
 func (c *Client) GetStatusCarteServer() (*CarteServerStatus, error) {
-	Logger.Debug("GetCarteServerStatus")
+	c.Logger.Debug("GetCarteServerStatus")
 	var status CarteServerStatus
 	resp, err := c.client.R().
 		SetQueryParam("xml", "Y").

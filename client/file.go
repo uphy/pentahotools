@@ -21,7 +21,7 @@ import (
 
 // Backup backups whole of the pentaho.
 func (c *Client) Backup(output string) error {
-	Logger.Debug("Backup", zap.String("output", output))
+	c.Logger.Debug("Backup", zap.String("output", output))
 	resp, err := c.client.R().
 		SetOutput(output).
 		Get(fmt.Sprintf("api/repo/files/backup"))
@@ -42,7 +42,7 @@ func (c *Client) Backup(output string) error {
 
 // Restore restores whole of the pentaho from a file.
 func (c *Client) Restore(input string, overwrite bool) error {
-	Logger.Debug("Restore", zap.String("input", input), zap.Bool("overwrite", overwrite))
+	c.Logger.Debug("Restore", zap.String("input", input), zap.Bool("overwrite", overwrite))
 	resp, err := c.client.R().
 		SetFile("fileUpload", input).
 		SetFormData(map[string]string{
@@ -66,7 +66,7 @@ func (c *Client) Restore(input string, overwrite bool) error {
 
 // Tree list the children of the specified path.
 func (c *Client) Tree(path string, depth int, showHidden bool) (*FileEntry, error) {
-	Logger.Debug("Tree", zap.String("path", path), zap.Int("depth", depth), zap.Bool("showHidden", showHidden))
+	c.Logger.Debug("Tree", zap.String("path", path), zap.Int("depth", depth), zap.Bool("showHidden", showHidden))
 	var root FileEntry
 	resp, err := c.client.R().
 		SetQueryParam("showHidden", strconv.FormatBool(showHidden)).
@@ -92,7 +92,7 @@ func (c *Client) Tree(path string, depth int, showHidden bool) (*FileEntry, erro
 
 // GetACL gets the access control list of file.
 func (c *Client) GetACL(path string) (*ACL, error) {
-	Logger.Debug("GetACL", zap.String("path", path))
+	c.Logger.Debug("GetACL", zap.String("path", path))
 	var acl ACL
 	resp, err := c.client.R().
 		SetHeader("Accept", "application/json").
@@ -136,7 +136,7 @@ type ACL struct {
 // PutFile put the file to the repository.
 // destination should be a absolute file path.
 func (c *Client) PutFile(file string, destination string) error {
-	Logger.Debug("PutFile", zap.String("file", file), zap.String("destination", destination))
+	c.Logger.Debug("PutFile", zap.String("file", file), zap.String("destination", destination))
 	if strings.HasSuffix(destination, "/") {
 		_, filename := filepath.Split(file)
 		destination = destination + filename
@@ -238,7 +238,7 @@ func (c *Client) GetFileContent(repositoryPath string) ([]byte, error) {
 
 // getFile gets file from the repository
 func (c *Client) getFile(repositoryPath string, destination string) ([]byte, error) {
-	Logger.Debug("getFile", zap.String("repositoryPath", repositoryPath), zap.String("destination", destination))
+	c.Logger.Debug("getFile", zap.String("repositoryPath", repositoryPath), zap.String("destination", destination))
 	isCatMode := destination == ""
 	req := c.client.R()
 	if !isCatMode {
@@ -268,7 +268,7 @@ func (c *Client) getFile(repositoryPath string, destination string) ([]byte, err
 
 // DownloadFile gets file from the repository
 func (c *Client) DownloadFile(repositoryPath string, destination string, withManifest bool, overwrite bool) (string, error) {
-	Logger.Debug("DownloadFile", zap.String("repositoryPath", repositoryPath), zap.String("destination", destination), zap.Bool("withManifest", withManifest), zap.Bool("overwrite", overwrite))
+	c.Logger.Debug("DownloadFile", zap.String("repositoryPath", repositoryPath), zap.String("destination", destination), zap.Bool("withManifest", withManifest), zap.Bool("overwrite", overwrite))
 	helper := NewDownloadHelper(destination, overwrite)
 	err := helper.PrepareTemporaryFile()
 	if err != nil {
@@ -299,7 +299,7 @@ func (c *Client) DownloadFile(repositoryPath string, destination string, withMan
 
 // ImportFile imports a file to the directory in the repository.
 func (c *Client) ImportFile(file string, importDir string, params *ImportParameters) error {
-	Logger.Debug("ImportFile", zap.String("file", file), zap.String("importDir", importDir), zap.String("params", fmt.Sprint(params)))
+	c.Logger.Debug("ImportFile", zap.String("file", file), zap.String("importDir", importDir), zap.String("params", fmt.Sprint(params)))
 	_, filename := filepath.Split(file)
 	resp, err := c.client.R().
 		SetFiles(map[string]string{
@@ -334,13 +334,13 @@ func (c *Client) ImportFile(file string, importDir string, params *ImportParamet
 
 // DeleteFiles move file to trash folder of the repository.
 func (c *Client) DeleteFiles(repositoryPaths ...string) error {
-	Logger.Debug("DeleteFile", zap.Strings("repositoryPaths", repositoryPaths))
+	c.Logger.Debug("DeleteFile", zap.Strings("repositoryPaths", repositoryPaths))
 	return c.deleteFile(false, repositoryPaths...)
 }
 
 // DeleteFilesPermanently deletes file from the repository.
 func (c *Client) DeleteFilesPermanently(repositoryPaths ...string) error {
-	Logger.Debug("DeleteFilesPermanently", zap.Strings("repositoryPaths", repositoryPaths))
+	c.Logger.Debug("DeleteFilesPermanently", zap.Strings("repositoryPaths", repositoryPaths))
 	return c.deleteFile(true, repositoryPaths...)
 }
 

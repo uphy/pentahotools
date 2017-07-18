@@ -9,7 +9,7 @@ import (
 
 // GetJobInfo gets the job info.
 func (c *Client) GetJobInfo(jobID string) (*Job, error) {
-	Logger.Debug("GetJobInfo", zap.String("jobID", jobID))
+	c.Logger.Debug("GetJobInfo", zap.String("jobID", jobID))
 	var job Job
 	resp, err := c.client.R().
 		SetQueryParam("jobId", jobID).
@@ -33,7 +33,7 @@ func (c *Client) GetJobInfo(jobID string) (*Job, error) {
 
 // ScheduleJob schedules job.
 func (c *Client) ScheduleJob(req *JobScheduleRequest) (string, error) {
-	Logger.Debug("ScheduleJob")
+	c.Logger.Debug("ScheduleJob")
 	resp, err := c.client.R().
 		SetBody(req).
 		SetHeader("Content-Type", "application/json").

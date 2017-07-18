@@ -114,7 +114,7 @@ func (c *RoleClient) newRole(assignment pentahoclient.Assignment) *Role {
 	for _, logicalName := range assignment.LogicalRoles {
 		permission := c.getPermissionFromLogicalName(logicalName)
 		if permission == nil {
-			pentahoclient.Logger.Warn("no such permission: " + logicalName)
+			c.client.Logger.Warn("no such permission: " + logicalName)
 		}
 		permissions = append(permissions, *c.getPermissionFromLogicalName(logicalName))
 	}
