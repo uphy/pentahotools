@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"net/url"
+
 	"go.uber.org/zap"
 )
 
@@ -143,7 +145,7 @@ func (c *Client) UpdatePassword(userName string, password string) error {
 		SetHeader("Content-Type", "application/json").
 		SetBody(map[string]interface{}{
 			"userName": userName,
-			"password": password,
+			"password": url.QueryEscape(password),
 		}).
 		Put("api/userroledao/updatePassword")
 	switch resp.StatusCode() {
