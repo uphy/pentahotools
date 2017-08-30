@@ -12,6 +12,7 @@ Get the 'pentahotools' binary from [Releases page](https://github.com/uphy/penta
 'pentahotools' consists of subcommands.
 
 Subcommands:
+
 |Subcommand |Description|
 |:------------------------|:----------|
 |[carte](#carte)          |Manage the jobs/transformations of the DI(Carte) server.|
@@ -23,7 +24,6 @@ Subcommands:
 
 In addition to the flags for subcommands, there's some global flags.
 
-Subcommands:
 |Flag |Description|
 |:------------------------|:----------|
 |-l|The URL of the Pentaho server. (e.g., http://localhost:8080/pentaho)|
