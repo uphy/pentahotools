@@ -309,6 +309,7 @@ var userroleUsersCmd = &cobra.Command{
 		return nil
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
+		fmt.Println(cmd.Flag("target").Value)
 		var users *[]string = nil
 		var err error = nil
 		if len(args) > 0 {
