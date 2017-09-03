@@ -12,6 +12,7 @@ import (
 	"github.com/mattn/go-shellwords"
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
 
@@ -22,6 +23,15 @@ var password string
 
 // Client for Pentaho
 var Client client.Client
+
+func initCommand(cmd *cobra.Command) {
+	cmd.Flags().VisitAll(func(f *pflag.Flag) {
+		f.Value.Set(f.DefValue)
+	})
+	for _, c := range cmd.Commands() {
+		initCommand(c)
+	}
+}
 
 // RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
@@ -48,6 +58,7 @@ var RootCmd = &cobra.Command{
 				fmt.Println(err)
 				continue
 			}
+			initCommand(cmd)
 			cmd.SetArgs(splitedCommandLine)
 			cmd.Execute()
 		}
