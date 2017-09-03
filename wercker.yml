@@ -29,5 +29,5 @@ deploy:
         token: $GITHUB_TOKEN
         input: dist
         version: 0.2.0
-        pre_release: true
+        pre_release: false
         replace: true
