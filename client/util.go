@@ -1,6 +1,7 @@
 package client
 
 import (
+	"io"
 	"io/ioutil"
 	"net/url"
 	"os"
@@ -14,7 +15,7 @@ import (
 type DownloadHelper struct {
 	overwrite    bool
 	destination  string
-	tmpFile      *os.File
+	tmpFile      string
 	FilenameFunc func(*resty.Response) string
 }
 
@@ -26,7 +27,7 @@ func NewDownloadHelper(destination string, overwrite bool) *DownloadHelper {
 }
 
 func (h *DownloadHelper) GetTemporaryFilePath() string {
-	return h.tmpFile.Name()
+	return h.tmpFile
 }
 
 func (h *DownloadHelper) existsAndIsFile(file string) bool {
@@ -38,11 +39,12 @@ func (h *DownloadHelper) PrepareTemporaryFile() error {
 	if h.existsAndIsFile(h.destination) && !h.overwrite {
 		return errors.New("destination file already exist")
 	}
-	tmpFile, err := ioutil.TempFile("", "download")
+	tmp, err := ioutil.TempFile("", "download")
 	if err != nil {
 		return errors.Wrap(err, "create temp file failed")
 	}
-	h.tmpFile = tmpFile
+	defer tmp.Close()
+	h.tmpFile = tmp.Name()
 	return nil
 }
 
@@ -85,15 +87,29 @@ func (h *DownloadHelper) MoveTemporaryFileToDestination(resp *resty.Response) (s
 	if h.existsAndIsFile(fixedDestination) && !h.overwrite {
 		return "", errors.New("destination file already exist")
 	}
-	err = os.Rename(h.GetTemporaryFilePath(), fixedDestination)
-	if err != nil {
-		return "", errors.Wrap(err, "failed to move the downloaded file to the destination")
-	}
+	err = h.move(h.GetTemporaryFilePath(), fixedDestination)
 	return fixedDestination, nil
 }
 
-func (h *DownloadHelper) Clean() {
-	if h.tmpFile != nil {
-		h.tmpFile.Close()
+func (h *DownloadHelper) move(from string, to string) error {
+	reader, err := os.Open(from)
+	if err != nil {
+		return err
 	}
+	defer reader.Close()
+	writer, err := os.Open(to)
+	if err != nil {
+		return err
+	}
+	defer writer.Close()
+	_, err = io.Copy(writer, reader)
+	if err != nil {
+		return err
+	}
+	err = os.Remove(from)
+	return err
+}
+
+func (h *DownloadHelper) Clean() {
+	// do nothing
 }
