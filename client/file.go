@@ -3,6 +3,7 @@ package client
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"strconv"
 	"strings"
 
@@ -245,6 +246,17 @@ func (c *Client) getFile(repositoryPath string, destination string) ([]byte, err
 		req.SetOutput(destination)
 	}
 	resp, err := req.Get(fmt.Sprintf("api/repo/files/%s", strings.Replace(repositoryPath, "/", ":", -1)))
+	defer func() {
+		if resp.StatusCode() == 200 {
+			return
+		}
+		if _, err := os.Stat(destination); err == nil {
+			c.Logger.Debug("deleting temp file due to the previous error", zap.String("destination", destination))
+			if err := os.Remove(destination); err != nil {
+				c.Logger.Error("failed to delete the temp file.", zap.String("target", destination))
+			}
+		}
+	}()
 
 	switch resp.StatusCode() {
 	case 200:
