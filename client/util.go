@@ -88,6 +88,9 @@ func (h *DownloadHelper) MoveTemporaryFileToDestination(resp *resty.Response) (s
 		return "", errors.New("destination file already exist")
 	}
 	err = h.move(h.GetTemporaryFilePath(), fixedDestination)
+	if err != nil {
+		return "", err
+	}
 	return fixedDestination, nil
 }
 
@@ -97,7 +100,7 @@ func (h *DownloadHelper) move(from string, to string) error {
 		return err
 	}
 	defer reader.Close()
-	writer, err := os.Open(to)
+	writer, err := os.Create(to)
 	if err != nil {
 		return err
 	}
@@ -106,6 +109,7 @@ func (h *DownloadHelper) move(from string, to string) error {
 	if err != nil {
 		return err
 	}
+	reader.Close()
 	err = os.Remove(from)
 	return err
 }
