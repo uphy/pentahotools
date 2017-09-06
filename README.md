@@ -38,6 +38,64 @@ In addition to the flags for subcommands, there's some global flags.
 
 ### [file](#file)
 
+List the files in home/admin.
+
+```bash
+$ pentahotools file tree home/admin
+admin (/home/admin)
+  test.xdash (/home/admin/test.xdash)
+  test2.xdash (/home/admin/test2.xdash)
+```
+
+Download the file home/admin/test.xdash
+
+```bash
+$ pentahotools file download -o home/admin/test.xdash
+Saved file to ./test.xdash
+```
+
+Download the directory home/admin.
+
+```bash
+$ pentahotools file download -o home/admin
+Saved file to ./admin.zip
+```
+
+Upload the file 'home/admin/test.xdash' to the 'home/admin/dest.xdash'.
+
+```bash
+$ pentahotools file put test.xdash home/admin/dest.xdash
+$ pentahotools file tree home/admin
+admin (/home/admin)
+  dest.xdash (/home/admin/dest.xdash)
+  test.xdash (/home/admin/test.xdash)
+  test2.xdash (/home/admin/test2.xdash)
+```
+
+Delete the file 'home/admin/dest.xdash'
+
+```bash
+$ pentahotools file delete home/admin/dest.xdash
+$ pentahotools file tree home/admin
+admin (/home/admin)
+  test.xdash (/home/admin/test.xdash)
+  test2.xdash (/home/admin/test2.xdash)
+```
+
+Backup the repository.
+
+```bash
+$ pentahotools file backup backup.zip
+```
+
+Restore the repository.  If you want to overwrite the existing file, specify the -o(--overwrite) option.
+
+```bash
+$ pentahotools file backup restore backup.zip
+```
+
+For the other commands, see the result of 'pentahotools file --help'
+
 ### [userrole](#userrole)
 
 ## Pentaho Tools Shell
