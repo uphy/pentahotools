@@ -312,10 +312,9 @@ func (c *Client) DownloadFile(repositoryPath string, destination string, withMan
 // ImportFile imports a file to the directory in the repository.
 func (c *Client) ImportFile(file string, importDir string, params *ImportParameters) error {
 	c.Logger.Debug("ImportFile", zap.String("file", file), zap.String("importDir", importDir), zap.String("params", fmt.Sprint(params)))
-	_, filename := filepath.Split(file)
 	resp, err := c.client.R().
 		SetFiles(map[string]string{
-			"fileUpload": filename,
+			"fileUpload": file,
 		}).
 		SetMultiValueFormData(url.Values{
 			"overwriteFile":           []string{strconv.FormatBool(params.OverwriteFile)},
