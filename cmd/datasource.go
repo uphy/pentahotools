@@ -36,6 +36,21 @@ func init() {
 			return nil
 		},
 	})
+	cmd.AddCommand(&cobra.Command{
+		Use:   "get-analysis-datasource-info",
+		Short: "Get the analysis datasource info.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) != 1 {
+				return errors.New("Specify a analysis datasource name")
+			}
+			info, err := Client.GetAnalysisDatasourceInfo(args[0])
+			if err != nil {
+				return err
+			}
+			info.Print()
+			return nil
+		},
+	})
 	exportAnalysisDatasourceCmd := &cobra.Command{
 		Use:   "export-analysis-datasource",
 		Short: "Export an analysis datasource.",

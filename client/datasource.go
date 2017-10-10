@@ -42,6 +42,44 @@ func (c *Client) ListAnalysisDatasources() ([]string, error) {
 	}
 }
 
+// AnalysisDatasourceInfo represents analysis datasource info
+type AnalysisDatasourceInfo struct {
+	DataSource string
+	Provider   string
+	EnableXmla bool
+	Overwrite  bool
+}
+
+// Print prints the analysis datasource info
+func (a *AnalysisDatasourceInfo) Print() {
+	fmt.Printf("Datasource : %s\n", a.DataSource)
+	fmt.Printf("Provider   : %s\n", a.Provider)
+	fmt.Printf("EnableXmla : %v\n", a.EnableXmla)
+	fmt.Printf("Overwrite  : %v\n", a.Overwrite)
+}
+
+// GetAnalysisDatasourceInfo retreives the information of analysis datasource.
+func (c *Client) GetAnalysisDatasourceInfo(name string) (*AnalysisDatasourceInfo, error) {
+	c.Logger.Debug("ListAnalysisDatasources", zap.String("name", name))
+	resp, err := c.client.R().
+		Get(fmt.Sprintf("plugin/data-access/api/datasource/%s/getAnalysisDatasourceInfo", name))
+	switch resp.StatusCode() {
+	case 200:
+		result := string(resp.Body())
+		tokens := strings.Split(result, ";")
+		dataSource := tokens[0][12 : len(tokens[0])-1]
+		provider := tokens[1][10 : len(tokens[1])-1]
+		enableXmla := tokens[2][12:len(tokens[2])-1] == "true"
+		overwrite := tokens[3][11:len(tokens[3])-1] == "true"
+		return &AnalysisDatasourceInfo{dataSource, provider, enableXmla, overwrite}, nil
+	default:
+		if err != nil {
+			return nil, err
+		}
+		return nil, fmt.Errorf("Unknown error. statusCode=%d", resp.StatusCode())
+	}
+}
+
 // ExportAnalysisDatasource exports an analysis datasource.
 func (c *Client) ExportAnalysisDatasource(name string, file string, overwrite bool) (string, error) {
 	c.Logger.Debug("ExportAnalysisDatasource", zap.String("name", name), zap.String("file", file), zap.Bool("overwrite", overwrite))
