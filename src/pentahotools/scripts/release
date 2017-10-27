@@ -1,0 +1,27 @@
+#!/bin/bash
+
+set -eo > /dev/null
+
+if [ $# != 2 ]; then
+  echo "Specify the release version and next version."
+  exit 1
+fi
+
+VERSION=$1
+NEXT_VERSION=$2
+
+# Update the version information
+git checkout develop
+git flow release start $VERSION
+sed -i '' -e 's/pre_release: .*/pre_release: false/' wercker.yml
+sed -i '' -e "s/version: .*/version: $VERSION/" wercker.yml
+git add wercker.yml
+git commit -m "Set pre_release=true in wercker.yml."
+# release
+git flow release finish $VERSION
+
+# Prepare for the next development
+sed -i '' -e 's/pre_release: .*/pre_release: true/' wercker.yml
+sed -i '' -e "s/version: .*/version: $NEXT_VERSION/" wercker.yml
+git add wercker.yml
+git commit -m "Start $NEXT_VERSION development."

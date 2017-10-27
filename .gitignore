@@ -1,6 +1,2 @@
-/.wercker
-/*.log
-*~
-/*.zip
-/*.csv
-/.vscode
+/pkg
+/bin
