@@ -28,6 +28,7 @@ func newCsvTableReader(file string, separator string) (Reader, error) {
 		return nil, errors.Wrap(err, "csv file open failed")
 	}
 	reader := csv.NewReader(transform.NewReader(f, japanese.ShiftJIS.NewDecoder()))
+	reader.FieldsPerRecord = -1
 	separatorRune, err := getSeparatorAsRune(separator)
 	if err != nil {
 		return nil, err
