@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 
+	"go.uber.org/zap"
+
 	client "github.com/uphy/pentahotools/client"
 
 	"strings"
@@ -69,8 +71,11 @@ var RootCmd = &cobra.Command{
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	if err := RootCmd.Execute(); err != nil {
+		Client.Logger.Error("Failed to execute command.", zap.Strings("command", os.Args), zap.String("error", err.Error()))
 		fmt.Println(err)
 		os.Exit(1)
+	} else {
+		Client.Logger.Debug("Successfully executed command.", zap.Strings("command", os.Args))
 	}
 }
 
