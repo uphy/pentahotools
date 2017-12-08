@@ -274,6 +274,40 @@ func init() {
 		},
 	})
 
+	// set-acl
+	setACLCmd := &cobra.Command{
+		Use:   "set-acl",
+		Short: "Set the access control list of file or directory",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) != 1 {
+				return errors.New("specify the resource path")
+			}
+			path := args[0]
+			acl, err := Client.GetACL(path)
+			if err != nil {
+				return err
+			}
+			if cmd.Flag("inherit").Changed {
+				inherit, _ := cmd.Flags().GetBool("inherit")
+				acl.EntriesInheriting = fmt.Sprint(inherit)
+				if inherit {
+					acl.Aces = nil
+				}
+			}
+			if owner, _ := cmd.Flags().GetString("owner"); owner != "" {
+				acl.Owner = owner
+			}
+			if ownerType, _ := cmd.Flags().GetString("ownertype"); ownerType != "" {
+				acl.OwnerType = ownerType
+			}
+			return Client.SetACL(path, acl)
+		},
+	}
+	setACLCmd.Flags().BoolP("inherit", "i", true, "inherit parent directory permission.")
+	setACLCmd.Flags().StringP("owner", "o", "", "owner of the resource")
+	setACLCmd.Flags().StringP("ownertype", "t", "0", "owner of the resource")
+	fileCmd.AddCommand(setACLCmd)
+
 	// set-ac
 	setAc := &cobra.Command{
 		Use:   "set-ac",
