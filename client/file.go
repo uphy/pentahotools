@@ -150,12 +150,33 @@ func (c *Client) SetACL(path string, acl *ACL) error {
 	}
 }
 
+const (
+	ACPermissionRead                        = "0"
+	ACPermissionReadWrite                   = "1"
+	ACPermissionReadWriteDelete             = "2"
+	ACPermissionReadWriteDeleteAdministrate = "4"
+)
+
 // Ac represents an access control
 type Ac struct {
 	Modifiable    string `xml:"modifiable"`
 	Permissions   string `xml:"permissions"`
 	Recipient     string `xml:"recipient"`
 	RecipientType string `xml:"recipientType"`
+}
+
+func (a *Ac) PermissionsString() string {
+	switch a.Permissions {
+	case ACPermissionRead:
+		return "Read"
+	case ACPermissionReadWrite:
+		return "Read/Write"
+	case ACPermissionReadWriteDelete:
+		return "Read/Write/Delete"
+	case ACPermissionReadWriteDeleteAdministrate:
+		return "Read/Write/Delete/Administrate"
+	}
+	return fmt.Sprintf("<Unknown:%s>", a.Permissions)
 }
 
 // ACL represents an access control list
@@ -165,6 +186,45 @@ type ACL struct {
 	ID                string `xml:"id"`
 	Owner             string `xml:"owner"`
 	OwnerType         string `xml:"ownerType"`
+}
+
+func (a *ACL) GetOrNewAC(recipient string) *Ac {
+	for _, ac := range a.Aces {
+		if ac.Recipient == recipient {
+			return &ac
+		}
+	}
+	ac := Ac{
+		Modifiable:    "true",
+		Permissions:   ACPermissionRead,
+		Recipient:     recipient,
+		RecipientType: "0",
+	}
+	a.Aces = append(a.Aces, ac)
+	return &ac
+}
+
+func (a *ACL) SetAC(ac *Ac) error {
+	if ac.Permissions != ACPermissionRead && ac.Permissions != ACPermissionReadWrite && ac.Permissions != ACPermissionReadWriteDelete && ac.Permissions != ACPermissionReadWriteDeleteAdministrate {
+		return errors.New("Unknown permissions:" + ac.Permissions)
+	}
+	for i, ac2 := range a.Aces {
+		if ac2.Recipient == ac.Recipient {
+			a.Aces[i] = *ac
+			return nil
+		}
+	}
+	a.Aces = append(a.Aces, *ac)
+	return nil
+}
+
+func (a *ACL) DeleteAC(recipient string) {
+	for i, ac := range a.Aces {
+		if ac.Recipient == recipient {
+			a.Aces = append(a.Aces[:i], a.Aces[i+1:]...)
+			break
+		}
+	}
 }
 
 // PutFile put the file to the repository.

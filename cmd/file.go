@@ -246,4 +246,72 @@ func init() {
 			return Client.SetACL(path, acl)
 		},
 	})
+
+	// get-acl
+	fileCmd.AddCommand(&cobra.Command{
+		Use:   "get-acl",
+		Short: "Get the access control list of file or directory",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) != 1 {
+				return errors.New("specify the resource path")
+			}
+			path := args[0]
+			acl, err := Client.GetACL(path)
+			if err != nil {
+				return err
+			}
+			fmt.Printf("ID                : %s\n", acl.ID)
+			fmt.Printf("Entries Inheriting: %s\n", acl.EntriesInheriting)
+			fmt.Printf("Owner             : %s\n", acl.Owner)
+			fmt.Printf("Owner type        : %s\n", acl.OwnerType)
+			for _, ac := range acl.Aces {
+				fmt.Printf("[%s]\n", ac.Recipient)
+				fmt.Printf("Recipient Type: %s\n", ac.RecipientType)
+				fmt.Printf("Permissions   : %s\n", ac.PermissionsString())
+				fmt.Printf("Modifiable    : %s\n", ac.Modifiable)
+			}
+			return nil
+		},
+	})
+
+	// set-ac
+	setAc := &cobra.Command{
+		Use:   "set-ac",
+		Short: "Set the access control of file or directory",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) != 2 {
+				return errors.New("specify the resource path and recipient name")
+			}
+			path := args[0]
+			recipient := args[1]
+			acl, err := Client.GetACL(path)
+			if err != nil {
+				return err
+			}
+			delete, _ := cmd.Flags().GetBool("delete")
+			if delete {
+				acl.DeleteAC(recipient)
+			} else {
+				ac := acl.GetOrNewAC(recipient)
+				if recipientType, _ := cmd.Flags().GetString("recipienttype"); recipientType != "" {
+					ac.RecipientType = recipientType
+				}
+				if permissions, _ := cmd.Flags().GetString("permissions"); permissions != "" {
+					ac.Permissions = permissions
+				}
+				if modifiable, _ := cmd.Flags().GetString("modifiable"); modifiable != "" {
+					ac.Modifiable = modifiable
+				}
+				if err := acl.SetAC(ac); err != nil {
+					return err
+				}
+			}
+			return Client.SetACL(path, acl)
+		},
+	}
+	setAc.Flags().StringP("recipienttype", "r", "", "Recipient type")
+	setAc.Flags().StringP("permissions", "P", "", "Permission. (0:read,1:read/write,2:read/write/delete,4:read/write/delete/admin)")
+	setAc.Flags().StringP("modifiable", "m", "", "Modifiable")
+	setAc.Flags().BoolP("delete", "d", false, "Delete")
+	fileCmd.AddCommand(setAc)
 }
