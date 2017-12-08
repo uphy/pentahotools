@@ -216,6 +216,7 @@ func init() {
 	createDirectoryCmd.Aliases = []string{"mkdir"}
 	fileCmd.AddCommand(createDirectoryCmd)
 
+	// clear-cache
 	fileCmd.AddCommand(&cobra.Command{
 		Use:   "clear-cache",
 		Short: "Clear the cache of Analyzer and Mondrian.",
@@ -224,6 +225,25 @@ func init() {
 				return errors.New("specify a catalog name")
 			}
 			return Client.ClearCache(args[0])
+		},
+	})
+
+	// set-owner
+	fileCmd.AddCommand(&cobra.Command{
+		Use:   "set-owner",
+		Short: "Set the owner of file or directory",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) != 2 {
+				return errors.New("specify the resource path and owner user name")
+			}
+			path := args[0]
+			owner := args[1]
+			acl, err := Client.GetACL(path)
+			if err != nil {
+				return err
+			}
+			acl.Owner = owner
+			return Client.SetACL(path, acl)
 		},
 	})
 }

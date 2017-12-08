@@ -117,21 +117,54 @@ func (c *Client) GetACL(path string) (*ACL, error) {
 	}
 }
 
+// SetACL set the access control list of file.
+func (c *Client) SetACL(path string, acl *ACL) error {
+	if acl == nil {
+		return errors.New("acl == nil")
+	}
+	dto := struct {
+		ACL
+		XMLName struct{} `xml:"repositoryFileAclDto"`
+	}{ACL: *acl}
+	xmlBytes, _ := xml.Marshal(dto)
+	c.Logger.Debug("SetACL", zap.String("path", path), zap.String("acl", string(xmlBytes)))
+	resp, err := c.client.R().
+		SetHeader("Content-Type", "application/xml").
+		SetBody(dto).
+		Put(fmt.Sprintf("api/repo/files/%s/acl", strings.Replace(path, "/", ":", -1)))
+
+	switch resp.StatusCode() {
+	case 200:
+		return nil
+	case 403:
+		return errors.New("Failed to save acls due to missing or incorrect properties")
+	case 400:
+		return errors.New("Failed to save acls due to malformed xml")
+	case 500:
+		return errors.New("Failed to save acls due to another error")
+	default:
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("Unknown error. statusCode=%d", resp.StatusCode())
+	}
+}
+
 // Ac represents an access control
 type Ac struct {
-	Modifiable    string
-	Permissions   string
-	Recipient     string
-	RecipientType string
+	Modifiable    string `xml:"modifiable"`
+	Permissions   string `xml:"permissions"`
+	Recipient     string `xml:"recipient"`
+	RecipientType string `xml:"recipientType"`
 }
 
 // ACL represents an access control list
 type ACL struct {
-	Aces              []Ac
-	EntriesInheriting string
-	ID                string
-	Owner             string
-	OwnerType         string
+	Aces              []Ac   `xml:"aces"`
+	EntriesInheriting string `xml:"entriesInheriting"`
+	ID                string `xml:"id"`
+	Owner             string `xml:"owner"`
+	OwnerType         string `xml:"ownerType"`
 }
 
 // PutFile put the file to the repository.
