@@ -347,5 +347,43 @@ func init() {
 	setAc.Flags().StringP("permissions", "P", "", "Permission. (0:read,1:read/write,2:read/write/delete,4:read/write/delete/admin)")
 	setAc.Flags().StringP("modifiable", "m", "", "Modifiable")
 	setAc.Flags().BoolP("delete", "d", false, "Delete")
-	fileCmd.AddCommand(setAc)
+
+	fileCmd.AddCommand(&cobra.Command{
+		Use:   "set-metadata",
+		Short: "Set the metadata of files in repository",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) != 3 {
+				return errors.New("specify the resource path, metadata key, and metadata value")
+			}
+			path := args[0]
+			key := args[1]
+			value := args[2]
+
+			metadata, err := Client.GetMetadata(path)
+			if err != nil {
+				return err
+			}
+
+			metadata[key] = value
+			return Client.SetMetadata(path, metadata)
+		},
+	})
+	fileCmd.AddCommand(&cobra.Command{
+		Use:   "get-metadata",
+		Short: "get the metadata of files in repository",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) != 1 {
+				return errors.New("specify the resource path")
+			}
+			path := args[0]
+			metadata, err := Client.GetMetadata(path)
+			if err != nil {
+				return err
+			}
+			for key, value := range metadata {
+				fmt.Printf("%s=%s\n", key, value)
+			}
+			return nil
+		},
+	})
 }

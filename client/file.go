@@ -227,6 +227,88 @@ func (a *ACL) DeleteAC(recipient string) {
 	}
 }
 
+const (
+	FileMetadataSchedulable = "_PERM_SCHEDULABLE"
+	FileMetadataHidden      = "_PERM_HIDDEN"
+)
+
+type FileMetadata struct {
+	Entries []FileMetadataEntry `json:"stringKeyStringValueDto"`
+}
+
+func (m *FileMetadata) load(metadata map[string]interface{}) {
+	for key, value := range metadata {
+		m.Entries = append(m.Entries, FileMetadataEntry{key, value})
+	}
+}
+
+func (m *FileMetadata) toMap() map[string]interface{} {
+	result := map[string]interface{}{}
+	for _, entry := range m.Entries {
+		result[entry.Key] = entry.Value
+	}
+	return result
+}
+
+type FileMetadataEntry struct {
+	Key   string      `json:"key"`
+	Value interface{} `json:"value"`
+}
+
+func (c *Client) SetMetadata(file string, metadata map[string]interface{}) error {
+	c.Logger.Debug("SetMetadata", zap.String("file", file), zap.String("metadata", fmt.Sprint(metadata)))
+	m := FileMetadata{[]FileMetadataEntry{}}
+	m.load(metadata)
+	if metadata == nil {
+		return errors.New("metadata == nil")
+	}
+	resp, err := c.client.R().
+		SetHeader("Content-Type", "application/json").
+		SetBody(m).
+		Put(fmt.Sprintf("api/repo/files/%s/metadata", strings.Replace(file, "/", ":", -1)))
+
+	switch resp.StatusCode() {
+	case 200:
+		return nil
+	case 403:
+		return errors.New("Invalid path")
+	case 400:
+		return errors.New("Invalid payload")
+	case 500:
+		return errors.New("Server Error")
+	default:
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("Unknown error. statusCode=%d", resp.StatusCode())
+	}
+}
+
+func (c *Client) GetMetadata(file string) (map[string]interface{}, error) {
+	c.Logger.Debug("GetMetadata", zap.String("file", file))
+	var metadata FileMetadata
+	resp, err := c.client.R().
+		SetHeader("Content-Type", "application/json").
+		SetResult(&metadata).
+		Get(fmt.Sprintf("api/repo/files/%s/metadata", strings.Replace(file, "/", ":", -1)))
+
+	switch resp.StatusCode() {
+	case 200:
+		return metadata.toMap(), nil
+	case 403:
+		return nil, errors.New("Invalid path")
+	case 400:
+		return nil, errors.New("Invalid payload")
+	case 500:
+		return nil, errors.New("Server Error")
+	default:
+		if err != nil {
+			return nil, err
+		}
+		return nil, fmt.Errorf("Unknown error. statusCode=%d", resp.StatusCode())
+	}
+}
+
 // PutFile put the file to the repository.
 // destination should be a absolute file path.
 func (c *Client) PutFile(file string, destination string) error {
