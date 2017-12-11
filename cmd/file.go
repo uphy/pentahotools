@@ -347,6 +347,7 @@ func init() {
 	setAc.Flags().StringP("permissions", "P", "", "Permission. (0:read,1:read/write,2:read/write/delete,4:read/write/delete/admin)")
 	setAc.Flags().StringP("modifiable", "m", "", "Modifiable")
 	setAc.Flags().BoolP("delete", "d", false, "Delete")
+	fileCmd.AddCommand(setAc)
 
 	fileCmd.AddCommand(&cobra.Command{
 		Use:   "set-metadata",
