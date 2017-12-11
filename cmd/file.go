@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/uphy/pentahotools/client"
@@ -159,8 +160,16 @@ func init() {
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			_, filename := filepath.Split(args[0])
-			err := Client.ImportFile(args[0], args[1], &client.ImportParameters{
+			filename, _ := cmd.Flags().GetString("filename")
+			if filename == "" {
+				_, filename = filepath.Split(args[0])
+			}
+			target := args[0]
+			destination := args[1]
+			if !strings.HasPrefix(destination, "/") {
+				return errors.New("destination must be an absolute path")
+			}
+			err := Client.ImportFile(target, destination, &client.ImportParameters{
 				OverwriteFile:           true,
 				LogLevel:                "ERROR",
 				FileNameOverride:        filename,
@@ -175,8 +184,7 @@ func init() {
 			return nil
 		},
 	}
-	//importCmd.Flags().BoolP("overwrite", "o", false, "overwrite if exist")
-	//importCmd.Flags().StringP("loglevel", "L", string(client.LogLevels.Basic), "log level")
+	importCmd.Flags().StringP("filename", "f", "", "override filename")
 	fileCmd.AddCommand(importCmd)
 
 	// file delete
