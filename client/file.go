@@ -599,14 +599,23 @@ func (e *FileEntry) Print(option *PrintOption) {
 }
 
 func (e *FileEntry) print(level int, parentPath string, option *PrintOption) {
-	path := fmt.Sprintf("%s/%s", parentPath, e.File.Name)
+	name := e.File.Name
+	var path string
+	var pathForPrint string
+	if level == 0 {
+		path = name
+		pathForPrint = "/" + name
+	} else {
+		path = fmt.Sprintf("%s/%s", parentPath, name)
+		pathForPrint = path
+	}
 	if option.Indent {
-		fmt.Print(fmt.Sprintf(fmt.Sprintf("%%%ds", level*2), ""))
+		fmt.Print(fmt.Sprintf(fmt.Sprintf("%%%ds", level*3), ""))
 	}
 	if option.AbsolutePath {
-		fmt.Println(path)
+		fmt.Println(pathForPrint)
 	} else {
-		fmt.Println(e.File.Name)
+		fmt.Println(name)
 	}
 	for _, entry := range e.Children {
 		entry.print(level+1, path, option)
