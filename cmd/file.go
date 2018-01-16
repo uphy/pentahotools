@@ -33,26 +33,29 @@ func init() {
 			} else {
 				path = "/"
 			}
+			// query options
 			showHidden, _ := cmd.Flags().GetBool("showHidden")
 			depth, _ := cmd.Flags().GetInt("depth")
+			// format options
 			nameonly, _ := cmd.Flags().GetBool("nameonly")
+			tree, _ := cmd.Flags().GetBool("tree")
+
 			root, err := Client.Tree(path, depth, showHidden)
+
 			if err != nil {
 				return err
 			}
-			if nameonly {
-				for _, entry := range root.Children {
-					fmt.Println(entry.File.Name)
-				}
-			} else {
-				root.Print()
-			}
+			root.Print(&client.PrintOption{
+				AbsolutePath: !nameonly,
+				Indent:       tree,
+			})
 			return nil
 		},
 	}
 	treeCmd.Flags().BoolP("showHidden", "s", false, "Show hidden files")
 	treeCmd.Flags().IntP("depth", "d", 1, "The depth of the tree")
 	treeCmd.Flags().BoolP("nameonly", "n", false, "Print only file names")
+	treeCmd.Flags().BoolP("tree", "t", false, "Print tree style.")
 	treeCmd.Aliases = []string{"ls"}
 	fileCmd.AddCommand(treeCmd)
 

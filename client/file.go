@@ -588,16 +588,28 @@ type FileInfo struct {
 	VersioningEnabled     string `json:"versioningEnabled"`
 }
 
-// Print prints the file entry recursively
-func (e *FileEntry) Print() {
-	e.print(0)
+type PrintOption struct {
+	Indent       bool
+	AbsolutePath bool
 }
 
-func (e *FileEntry) print(level int) {
-	indent := fmt.Sprintf(fmt.Sprintf("%%%ds", level*2), "")
-	fmt.Printf("%s%s (%s)\n", indent, e.File.Name, e.File.Path)
+// Print prints the file entry recursively
+func (e *FileEntry) Print(option *PrintOption) {
+	e.print(0, "", option)
+}
+
+func (e *FileEntry) print(level int, parentPath string, option *PrintOption) {
+	path := fmt.Sprintf("%s/%s", parentPath, e.File.Name)
+	if option.Indent {
+		fmt.Print(fmt.Sprintf(fmt.Sprintf("%%%ds", level*2), ""))
+	}
+	if option.AbsolutePath {
+		fmt.Println(path)
+	} else {
+		fmt.Println(e.File.Name)
+	}
 	for _, entry := range e.Children {
-		entry.print(level + 1)
+		entry.print(level+1, path, option)
 	}
 }
 
