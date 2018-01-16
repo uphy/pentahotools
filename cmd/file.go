@@ -35,16 +35,24 @@ func init() {
 			}
 			showHidden, _ := cmd.Flags().GetBool("showHidden")
 			depth, _ := cmd.Flags().GetInt("depth")
+			nameonly, _ := cmd.Flags().GetBool("nameonly")
 			root, err := Client.Tree(path, depth, showHidden)
 			if err != nil {
 				return err
 			}
-			root.Print()
+			if nameonly {
+				for _, entry := range root.Children {
+					fmt.Println(entry.File.Name)
+				}
+			} else {
+				root.Print()
+			}
 			return nil
 		},
 	}
 	treeCmd.Flags().BoolP("showHidden", "s", false, "Show hidden files")
 	treeCmd.Flags().IntP("depth", "d", 1, "The depth of the tree")
+	treeCmd.Flags().BoolP("nameonly", "n", false, "Print only file names")
 	treeCmd.Aliases = []string{"ls"}
 	fileCmd.AddCommand(treeCmd)
 
