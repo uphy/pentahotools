@@ -141,4 +141,19 @@ func init() {
 	removeCmd.Flags().BoolP("all", "a", false, "Remove all finished job/transformations.")
 	removeCmd.Aliases = []string{"rm"}
 	carteCmd.AddCommand(removeCmd)
+
+	carteCmd.AddCommand(&cobra.Command{
+		Use:   "slaves",
+		Short: "Get the list of slaves.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			slaves, err := Client.GetSlaves()
+			if err != nil {
+				return err
+			}
+			for _, slaveServerDetection := range slaves.SlaveServerDetections {
+				fmt.Println(slaveServerDetection.SlaveServer)
+			}
+			return nil
+		},
+	})
 }
