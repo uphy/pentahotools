@@ -67,10 +67,14 @@ func (c *Client) GetAnalysisDatasourceInfo(name string) (*AnalysisDatasourceInfo
 	case 200:
 		result := string(resp.Body())
 		tokens := strings.Split(result, ";")
-		dataSource := tokens[0][12 : len(tokens[0])-1]
-		provider := tokens[1][10 : len(tokens[1])-1]
-		enableXmla := tokens[2][12:len(tokens[2])-1] == "true"
-		overwrite := tokens[3][11:len(tokens[3])-1] == "true"
+		props, err := c.parseProperties(tokens)
+		if err != nil {
+			return nil, err
+		}
+		dataSource := props["DataSource"]
+		provider := props["Provider"]
+		enableXmla := props["EnableXmla"] == "true"
+		overwrite := props["Overwrite"] == "true"
 		return &AnalysisDatasourceInfo{dataSource, provider, enableXmla, overwrite}, nil
 	default:
 		if err != nil {
@@ -78,6 +82,23 @@ func (c *Client) GetAnalysisDatasourceInfo(name string) (*AnalysisDatasourceInfo
 		}
 		return nil, fmt.Errorf("Unknown error. statusCode=%d", resp.StatusCode())
 	}
+}
+
+func (c *Client) parseProperties(tokens []string) (map[string]string, error) {
+	properties := map[string]string{}
+	for _, token := range tokens {
+		eqIndex := strings.Index(token, "=")
+		if eqIndex < 0 {
+			return nil, errors.New("invalid property format")
+		}
+		key := token[0:eqIndex]
+		value := token[eqIndex+1:]
+		if strings.HasPrefix(value, "\"") && strings.HasPrefix(value, "\"") {
+			value = value[1 : len(value)-1]
+		}
+		properties[key] = value
+	}
+	return properties, nil
 }
 
 // ExportAnalysisDatasource exports an analysis datasource.
