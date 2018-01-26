@@ -47,7 +47,7 @@ func (c *Client) Restore(input string, overwrite bool) error {
 	resp, err := c.client.R().
 		SetFile("fileUpload", input).
 		SetFormData(map[string]string{
-			"overwriteFile": strconv.FormatBool(overwrite),
+			"overwrite": strconv.FormatBool(overwrite),
 		}).
 		Post(fmt.Sprintf("api/repo/files/systemRestore"))
 	switch resp.StatusCode() {
