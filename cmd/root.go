@@ -71,11 +71,15 @@ var RootCmd = &cobra.Command{
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	if err := RootCmd.Execute(); err != nil {
-		Client.Logger.Error("Failed to execute command.", zap.String("error", err.Error()))
+		if Client.Logger != nil {
+			Client.Logger.Error("Failed to execute command.", zap.String("error", err.Error()))
+		}
 		fmt.Println(err)
 		os.Exit(1)
 	} else {
-		Client.Logger.Debug("Successfully executed command.")
+		if Client.Logger != nil {
+			Client.Logger.Debug("Successfully executed command.")
+		}
 	}
 }
 
